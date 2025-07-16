@@ -19,8 +19,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/flight-booking" element={<FlightBooking />} />
+         
+          <Route path="/" element={<FlightBooking />} />
           <Route path="/flight-results" element={<FlightResults />} />
           <Route path="/ai-flight-results" element={<AIFlightResults />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
