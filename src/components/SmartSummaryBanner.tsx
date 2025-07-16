@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Lightbulb,
   Target,
-  Zap
+  Zap,
+  ChevronRight
 } from "lucide-react";
 import { FlightSummary, generateFlightSummary, FlightResult, SearchRequest } from "@/services/flightSummaryService";
 
@@ -26,16 +27,29 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest }: Sm
   const [summary, setSummary] = useState<FlightSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // Start expanded
 
   useEffect(() => {
     loadSummary();
   }, [flightResults, searchRequest]);
+
+  // Auto-collapse after 10 seconds
+  useEffect(() => {
+    if (summary && !isLoading) {
+      const timer = setTimeout(() => {
+        setIsExpanded(false);
+      }, 10000); // 10 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [summary, isLoading]);
 
   const loadSummary = async () => {
     setIsLoading(true);
     try {
       const result = await generateFlightSummary(flightResults, searchRequest);
       setSummary(result);
+      setIsExpanded(true); // Reset to expanded when new data loads
     } catch (error) {
       console.error("Failed to generate summary:", error);
     } finally {
@@ -101,108 +115,130 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest }: Sm
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="text-green-600 hover:text-green-700"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="text-green-600 hover:text-green-700"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-gray-600 hover:text-gray-700"
+            >
+              <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Insights */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-              <Target className="w-4 h-4 mr-2 text-green-600" />
-              Key Insights
-            </h4>
-            <div className="space-y-3">
-              {summary.insights.map((insight, index) => (
-                <div
-                  key={index}
-                  className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-green-100 hover:border-green-200 transition-colors cursor-pointer"
-                  onClick={() => onInsightClick?.(insight)}
-                >
-                  <div className="text-green-600 mt-0.5">
-                    {getInsightIcon(insight)}
+        {/* Collapsible Content */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Insights */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                <Target className="w-4 h-4 mr-2 text-green-600" />
+                Key Insights
+              </h4>
+              <div className="space-y-3">
+                {summary.insights.map((insight, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start space-x-3 p-3 bg-white rounded-lg border border-green-100 hover:border-green-200 transition-colors cursor-pointer"
+                    onClick={() => onInsightClick?.(insight)}
+                  >
+                    <div className="text-green-600 mt-0.5">
+                      {getInsightIcon(insight)}
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {insight}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {insight}
-                  </p>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                <Zap className="w-4 h-4 mr-2 text-blue-600" />
+                Quick Stats
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-2xl font-bold text-green-600">
+                    ₹{summary.priceAnalysis.cheapestPrice.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-500">Lowest Price</div>
                 </div>
-              ))}
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {summary.airlineAnalysis.directFlights}
+                  </div>
+                  <div className="text-xs text-gray-500">Direct Flights</div>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {summary.timingAnalysis.morningFlights}
+                  </div>
+                  <div className="text-xs text-gray-500">Morning Options</div>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {summary.airlineAnalysis.totalAirlines}
+                  </div>
+                  <div className="text-xs text-gray-500">Airlines</div>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 bg-white rounded-lg border">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Price Range:</span>
+                  <span className="font-medium text-gray-900">
+                    ₹{summary.priceAnalysis.priceRange}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-gray-600">Average Price:</span>
+                  <span className="font-medium text-gray-900">
+                    ₹{summary.priceAnalysis.averagePrice.toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-              <Zap className="w-4 h-4 mr-2 text-blue-600" />
-              Quick Stats
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white p-3 rounded-lg border">
-                <div className="text-2xl font-bold text-green-600">
-                  ₹{summary.priceAnalysis.cheapestPrice.toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-500">Lowest Price</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border">
-                <div className="text-2xl font-bold text-blue-600">
-                  {summary.airlineAnalysis.directFlights}
-                </div>
-                <div className="text-xs text-gray-500">Direct Flights</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border">
-                <div className="text-2xl font-bold text-purple-600">
-                  {summary.timingAnalysis.morningFlights}
-                </div>
-                <div className="text-xs text-gray-500">Morning Options</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border">
-                <div className="text-2xl font-bold text-orange-600">
-                  {summary.airlineAnalysis.totalAirlines}
-                </div>
-                <div className="text-xs text-gray-500">Airlines</div>
-              </div>
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-green-100">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Users className="w-4 h-4" />
+              <span>Based on {flightResults.length} flight options</span>
             </div>
-            
-            <div className="mt-4 p-3 bg-white rounded-lg border">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Price Range:</span>
-                <span className="font-medium text-gray-900">
-                  ₹{summary.priceAnalysis.priceRange}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-gray-600">Average Price:</span>
-                <span className="font-medium text-gray-900">
-                  ₹{summary.priceAnalysis.averagePrice.toLocaleString()}
-                </span>
-              </div>
+            <div className="flex space-x-2">
+              <Badge variant="secondary" className="bg-green-100 text-green-700">
+                AI Powered
+              </Badge>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                Real-time
+              </Badge>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-green-100">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Users className="w-4 h-4" />
-            <span>Based on {flightResults.length} flight options</span>
+        {/* Collapsed State Indicator */}
+        {!isExpanded && (
+          <div className="text-center py-2">
+            <p className="text-sm text-gray-500">
+              Click the chevron to expand insights
+            </p>
           </div>
-          <div className="flex space-x-2">
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              AI Powered
-            </Badge>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-              Real-time
-            </Badge>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

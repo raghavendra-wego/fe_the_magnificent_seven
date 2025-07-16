@@ -45,6 +45,7 @@ import SocialProofBanner from "@/components/SocialProofBanner";
 import PersonalizedRecommendations from "@/components/PersonalizedRecommendations";
 import BookingProgressTracker from "@/components/BookingProgressTracker";
 import ExitIntentModal from "@/components/ExitIntentModal";
+import LiveActivityDeals from "@/components/LiveActivityDeals";
 
 const UnifiedFlightResults = () => {
   const navigate = useNavigate();
@@ -85,6 +86,11 @@ const UnifiedFlightResults = () => {
     if (localStorage.getItem('exitIntentDismissed') === 'true') {
       setShowExitIntent(false);
     }
+  }, []);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
   }, []);
 
   // Debug log to see what state we received
@@ -416,7 +422,7 @@ const UnifiedFlightResults = () => {
   const savingsPercentage = prices.length > 0 ? ((priceDifference / averagePrice) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50" onMouseLeave={handleExitIntent}>
+    <div className="min-h-screen bg-gray-50 pb-16" onMouseLeave={handleExitIntent}>
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -503,12 +509,7 @@ const UnifiedFlightResults = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Top Banners - Full Width */}
         <div className="mb-6">
-          {/* Social Proof Banner - Creates urgency and FOMO */}
-          <SocialProofBanner
-            totalFlights={flightResults.length}
-            cheapestPrice={cheapestPrice}
-            averagePrice={averagePrice}
-          />
+        
 
           {/* AI-Powered Smart Summary Banner */}
           <SmartSummaryBanner
@@ -889,6 +890,13 @@ const UnifiedFlightResults = () => {
         onClose={() => setShowExitIntent(false)}
         onStay={handleStayOnPage}
         onLeave={handleLeaveAnyway}
+        cheapestPrice={cheapestPrice}
+        averagePrice={averagePrice}
+      />
+
+      {/* Live Activity & Deals - Sticky Bottom */}
+      <LiveActivityDeals
+        totalFlights={flightResults.length}
         cheapestPrice={cheapestPrice}
         averagePrice={averagePrice}
       />

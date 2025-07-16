@@ -335,7 +335,7 @@ const FlightBooking = () => {
         <Button 
           size="lg" 
           className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
-          onClick={() => navigate('/flight-results', { 
+          onClick={() => navigate('/', { 
             state: { 
               searchRequest: {
                 from: { city: "Delhi", country: "India", code: "DEL" },
