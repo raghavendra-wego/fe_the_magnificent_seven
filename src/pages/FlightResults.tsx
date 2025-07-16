@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -24,14 +25,24 @@ import {
   Sparkles,
   RefreshCw,
   Send,
-  MessageSquare
+  MessageSquare,
+  Users,
+  Zap,
+  Award,
+  Shield,
+  TrendingUp,
+  Eye,
+  Heart,
+  Share2,
+  Bell
 } from "lucide-react";
+import { generateFlightResults } from "@/services/flightSummaryService";
 
 const FlightResults = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchState = location.state;
-  const searchRequest = searchState?.searchRequest;
+  const searchRequest = searchState?.searchRequest || searchState?.searchData;
   
   const [stops, setStops] = useState({
     direct: false,
@@ -46,43 +57,125 @@ const FlightResults = () => {
   const [expandedStops, setExpandedStops] = useState(true);
   const [expandedBooking, setExpandedBooking] = useState(true);
   const [expandedPrice, setExpandedPrice] = useState(true);
+  const [flightResults, setFlightResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // AI conversation state
-  const [conversation, setConversation] = useState([
-    {
-      question: searchRequest
-        ? `Find me the best flights from ${searchRequest.from ? `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})` : ''} to ${searchRequest.to ? `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})` : ''} for ${searchRequest.departDate ? new Date(searchRequest.departDate).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : ''}`
-        : searchState?.promptQuery || "Find me the best flights from Dubai to Cairo for July 16-August 8, 2025",
-      answer: {
-        cheapestFare: {
-          airline: "flynas",
-          price: "₽ 1,365",
-          details: searchRequest
-            ? `1 stop via Riyadh, great value for money from ${searchRequest.from ? `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})` : ''} to ${searchRequest.to ? `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})` : ''}`
-            : "1 stop via Riyadh, great value for money"
-        },
-        bestForYou: {
-          airline: "Emirates",
-          price: "₽ 2,365", 
-          details: searchRequest
-            ? `Direct flights, premium experience, excellent service record from ${searchRequest.from ? `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})` : ''} to ${searchRequest.to ? `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})` : ''}`
-            : "Direct flights, premium experience, excellent service record"
-        },
-        summary: searchRequest
-          ? `Found 3,608 flight options for ${searchRequest.from ? `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})` : ''} to ${searchRequest.to ? `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})` : ''} for ${searchRequest.departDate ? new Date(searchRequest.departDate).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : ''} - ${searchRequest.returnDate ? new Date(searchRequest.returnDate).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) : ''}`
-          : searchState?.searchType === 'ai-prompt' 
-            ? `Based on your request: "${searchState.promptQuery}", I found 3,608 flight options. Emirates offers the most comfortable direct route, while flynas provides excellent value with just one short stop in Riyadh. Current prices are 35% below monthly averages - book soon as peak season starts.`
-            : "Found 3,608 flight options. Emirates offers the most comfortable direct route, while flynas provides excellent value with just one short stop in Riyadh. Current prices are 35% below monthly averages - book soon as peak season starts July 25th."
-      }
-    }
-  ]);
+  const [conversation, setConversation] = useState([]);
   const [newQuestion, setNewQuestion] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAskingQuestion, setIsAskingQuestion] = useState(false);
 
   // Debug log to see what state we received
   useEffect(() => {
     console.log("FlightResults received state:", searchState);
-  }, [searchState]);
+    console.log("FlightResults searchRequest:", searchRequest);
+  }, [searchState, searchRequest]);
+
+  // Generate flight results based on search criteria
+  useEffect(() => {
+    console.log("FlightResults: searchRequest received:", searchRequest);
+    
+    if (searchRequest) {
+      setIsLoading(true);
+      // Simulate API call delay
+      setTimeout(() => {
+        try {
+          const flights = generateFlightResults(searchRequest);
+          console.log("FlightResults: Generated flights:", flights);
+          setFlightResults(flights);
+          setIsLoading(false);
+          
+          // Generate initial AI conversation based on search
+          const initialConversation = generateInitialConversation(searchRequest, flights);
+          setConversation([initialConversation]);
+        } catch (error) {
+          console.error("FlightResults: Error generating flights:", error);
+          // Fallback to mock data if generation fails
+          const mockFlights = [
+            {
+              airline: "Emirates",
+              aircraft: "Boeing 777",
+              departureTime: "2024-07-16T10:00:00Z",
+              arrivalTime: "2024-07-16T12:30:00Z",
+              departureAirport: "DXB",
+              arrivalAirport: "CAI",
+              duration: "2h 30m",
+              stops: 0,
+              price: 2500,
+              baggage: "20kg",
+              meal: "Included"
+            },
+            {
+              airline: "EgyptAir",
+              aircraft: "Airbus A320",
+              departureTime: "2024-07-16T14:00:00Z",
+              arrivalTime: "2024-07-16T16:45:00Z",
+              departureAirport: "DXB",
+              arrivalAirport: "CAI",
+              duration: "2h 45m",
+              stops: 0,
+              price: 1800,
+              baggage: "15kg",
+              meal: "Not included"
+            }
+          ];
+          setFlightResults(mockFlights);
+          setIsLoading(false);
+          
+          const initialConversation = generateInitialConversation(searchRequest, mockFlights);
+          setConversation([initialConversation]);
+        }
+      }, 1000);
+    } else {
+      // If no searchRequest, show some default data
+      console.log("FlightResults: No searchRequest, showing default data");
+      setIsLoading(false);
+      
+      // Create a default search request for demo purposes
+      const defaultSearchRequest = {
+        from: { city: "Dubai", country: "United Arab Emirates", code: "DXB" },
+        to: { city: "Cairo", country: "Egypt", code: "CAI" },
+        departDate: "2024-07-16",
+        returnDate: null,
+        tripType: "one-way",
+        passengers: { adults: 1, children: 0, infants: 0 },
+        travelClass: "economy"
+      };
+      
+      const mockFlights = [
+        {
+          airline: "Emirates",
+          aircraft: "Boeing 777",
+          departureTime: "2024-07-16T10:00:00Z",
+          arrivalTime: "2024-07-16T12:30:00Z",
+          departureAirport: "DXB",
+          arrivalAirport: "CAI",
+          duration: "2h 30m",
+          stops: 0,
+          price: 2500,
+          baggage: "20kg",
+          meal: "Included"
+        },
+        {
+          airline: "EgyptAir",
+          aircraft: "Airbus A320",
+          departureTime: "2024-07-16T14:00:00Z",
+          arrivalTime: "2024-07-16T16:45:00Z",
+          departureAirport: "DXB",
+          arrivalAirport: "CAI",
+          duration: "2h 45m",
+          stops: 0,
+          price: 1800,
+          baggage: "15kg",
+          meal: "Not included"
+        }
+      ];
+      
+      setFlightResults(mockFlights);
+      const initialConversation = generateInitialConversation(defaultSearchRequest, mockFlights);
+      setConversation([initialConversation]);
+    }
+  }, [searchRequest]);
 
   // Helper to format date
   function formatDate(date) {
@@ -93,7 +186,69 @@ const FlightResults = () => {
       return '';
     }
   }
-console.log(searchRequest)
+
+  // Helper to format time
+  function formatTime(dateString) {
+    if (!dateString) return '--:--';
+    try {
+      return new Date(dateString).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch {
+      return '--:--';
+    }
+  }
+
+  // Generate initial conversation based on search criteria
+  const generateInitialConversation = (searchRequest, flights) => {
+    const fromCity = searchRequest?.from?.city || 'Origin';
+    const toCity = searchRequest?.to?.city || 'Destination';
+    const departDate = searchRequest?.departDate ? formatDate(searchRequest.departDate) : '';
+    const returnDate = searchRequest?.returnDate ? formatDate(searchRequest.returnDate) : '';
+    const tripType = searchRequest?.tripType || 'one-way';
+    const passengers = searchRequest?.passengers?.adults || 1;
+    const travelClass = searchRequest?.travelClass || 'economy';
+
+    // Find best options
+    const cheapestFlight = flights.reduce((min, flight) => 
+      flight.price < min.price ? flight : min, flights[0]);
+    
+    const fastestFlight = flights.reduce((fastest, flight) => {
+      const fastestDuration = parseInt(fastest.duration.split('h')[0]) * 60 + parseInt(fastest.duration.split(' ')[1].split('m')[0]);
+      const currentDuration = parseInt(flight.duration.split('h')[0]) * 60 + parseInt(flight.duration.split(' ')[1].split('m')[0]);
+      return currentDuration < fastestDuration ? flight : fastest;
+    }, flights[0]);
+
+    const premiumFlight = flights.find(f => 
+      ['Emirates', 'Qatar Airways', 'Etihad', 'Turkish Airlines'].includes(f.airline) && f.meal === 'Included'
+    ) || flights[0];
+
+    return {
+      question: `Find me the best flights from ${fromCity} to ${toCity} for ${departDate}${tripType === 'round-trip' ? ` - ${returnDate}` : ''} (${passengers} ${passengers > 1 ? 'adults' : 'adult'}, ${travelClass} class)`,
+      answer: {
+        cheapestFare: {
+          airline: cheapestFlight?.airline || "Budget Airline",
+          price: `₹${cheapestFlight?.price?.toLocaleString() || "1,365"}`,
+          details: `${cheapestFlight?.stops === 0 ? 'Direct' : `${cheapestFlight?.stops} stop${cheapestFlight?.stops > 1 ? 's' : ''}`} flight, great value for money from ${fromCity} to ${toCity}`
+        },
+        bestForYou: {
+          airline: premiumFlight?.airline || "Premium Airline",
+          price: `₹${premiumFlight?.price?.toLocaleString() || "2,365"}`,
+          details: `${premiumFlight?.stops === 0 ? 'Direct' : `${premiumFlight?.stops} stop${premiumFlight?.stops > 1 ? 's' : ''}`} flight, premium experience, excellent service record from ${fromCity} to ${toCity}`
+        },
+        fastestOption: {
+          airline: fastestFlight?.airline || "Fast Airline",
+          price: `₹${fastestFlight?.price?.toLocaleString() || "1,891"}`,
+          details: `${fastestFlight?.duration || '2h 30m'} total journey time, shortest travel duration from ${fromCity} to ${toCity}`
+        },
+        summary: `Found ${flights.length} flight options for ${fromCity} to ${toCity} for ${departDate}${tripType === 'round-trip' ? ` - ${returnDate}` : ''}. ${premiumFlight?.airline || 'Premium Airline'} offers the most comfortable ${premiumFlight?.stops === 0 ? 'direct' : 'connecting'} route, while ${cheapestFlight?.airline || 'Budget Airline'} provides excellent value. Current prices are 25% below monthly averages - book soon as demand is high for this route.`
+      }
+    };
+  };
+
+  console.log(searchRequest);
   // Use searchRequest to build summary and mock results
   const fromLabel = searchRequest?.from ? `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})` : 'From';
   const toLabel = searchRequest?.to ? `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})` : 'To';
@@ -105,7 +260,7 @@ console.log(searchRequest)
   const handleAskQuestion = async () => {
     if (!newQuestion.trim()) return;
     
-    setIsLoading(true);
+    setIsAskingQuestion(true);
     
     // Simulate AI processing
     setTimeout(() => {
@@ -113,22 +268,22 @@ console.log(searchRequest)
         question: newQuestion,
         answer: {
           cheapestFare: {
-            airline: "flynas",
-            price: "₽ 1,365",
+            airline: "Budget Airline",
+            price: "₹1,365",
             details: "Still the most affordable option with good timing"
           },
           bestForYou: {
-            airline: "EgyptAir",
-            price: "₽ 1,691",
-            details: "Local carrier advantage, better for Cairo connections"
+            airline: "Premium Airline",
+            price: "₹1,691",
+            details: "Local carrier advantage, better connections"
           },
-          summary: `Based on your question "${newQuestion}", I've refined the recommendations. EgyptAir offers better local knowledge and connections, while flynas remains the budget choice.`
+          summary: `Based on your question "${newQuestion}", I've refined the recommendations. Premium Airline offers better local knowledge and connections, while Budget Airline remains the budget choice.`
         }
       };
       
       setConversation(prev => [...prev, mockResponse]);
       setNewQuestion("");
-      setIsLoading(false);
+      setIsAskingQuestion(false);
     }, 2000);
   };
 
@@ -139,6 +294,13 @@ console.log(searchRequest)
   };
 
   const currentAnswer = conversation[conversation.length - 1]?.answer;
+
+  // Calculate price statistics
+  const prices = flightResults.map(f => f.price);
+  const cheapestPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const averagePrice = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
+  const priceDifference = averagePrice - cheapestPrice;
+  const savingsPercentage = prices.length > 0 ? ((priceDifference / averagePrice) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -215,460 +377,536 @@ console.log(searchRequest)
                 <span className="font-medium">{returnLabel}</span>
               </div>
             )}
-            
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Left Side - Filters and Results */}
-          <div className="flex-1 flex gap-6">
-            {/* Filters Sidebar */}
-            <div className="w-72 space-y-4">
-              <div className="text-sm text-gray-600">
-                Compare Wego vs. these sites: 
-                <div className="flex items-center space-x-2 mt-2">
-                  <div className="w-4 h-4 bg-green-600 rounded flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
+        {/* AI-Powered Results Summary */}
+        {currentAnswer && (
+          <Card className="mb-6 border-gradient-to-r from-blue-50 to-purple-50 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-sm">Saudi Airlines</span>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">AI-Powered Flight Analysis</h2>
+                    <p className="text-sm text-gray-600">Based on your search criteria and preferences</p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700">
+                  AI Powered
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                {/* Cheapest Option */}
+                <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <TrendingDown className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-semibold text-gray-900">Best Value</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                      Cheapest
+                    </Badge>
+                  </div>
+                  <div className="text-2xl font-bold text-green-600 mb-1">
+                    {currentAnswer.cheapestFare?.price}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1">
+                    {currentAnswer.cheapestFare?.airline}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {currentAnswer.cheapestFare?.details}
+                  </div>
+                </div>
+
+                {/* Best For You */}
+                <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Award className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-gray-900">Recommended</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
+                      Best Overall
+                    </Badge>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                    {currentAnswer.bestForYou?.price}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1">
+                    {currentAnswer.bestForYou?.airline}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {currentAnswer.bestForYou?.details}
+                  </div>
+                </div>
+
+                {/* Fastest Option */}
+                <div className="bg-white p-4 rounded-lg border border-orange-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Zap className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm font-semibold text-gray-900">Fastest</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
+                      Quickest
+                    </Badge>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-600 mb-1">
+                    {currentAnswer.fastestOption?.price}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1">
+                    {currentAnswer.fastestOption?.airline}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {currentAnswer.fastestOption?.details}
+                  </div>
                 </div>
               </div>
 
-              <div className="text-sm">
-                <span className="font-medium">3608</span> of <span className="font-medium">3608</span> results
-                <Button variant="ghost" className="text-green-600 text-sm p-0 h-auto ml-4">
-                  Clear
+              {/* AI Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-start space-x-3">
+                  <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mt-0.5">
+                    <Info className="w-3 h-3 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-1">AI Analysis Summary</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {currentAnswer.summary}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick Actions Banner */}
+        {!isLoading && flightResults.length > 0 && (
+          <Card className="mb-6 border-orange-100 bg-gradient-to-r from-orange-50 to-yellow-50 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center">
+                    <Zap className="w-3 h-3 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      ⚡ Quick Actions to Save Money
+                    </h3>
+                    <p className="text-xs text-gray-600">
+                      Don't miss out on the best deals
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                  {flightResults.length} flights
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Price Alert */}
+                <div className="bg-white p-3 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Bell className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm font-medium">Price Alert</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Get notified when prices drop
+                  </p>
+                  <Button size="sm" variant="default" className="w-full text-xs">
+                    Set Alert
+                  </Button>
+                </div>
+
+                {/* Share Results */}
+                <div className="bg-white p-3 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Share2 className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium">Share Results</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Share with travel companions
+                  </p>
+                  <Button size="sm" variant="outline" className="w-full text-xs">
+                    Share
+                  </Button>
+                </div>
+
+                {/* Save Search */}
+                <div className="bg-white p-3 rounded-lg border border-orange-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Heart className="w-4 h-4 text-red-600" />
+                      <span className="text-sm font-medium">Save Search</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Save for later comparison
+                  </p>
+                  <Button size="sm" variant="outline" className="w-full text-xs">
+                    Save
+                  </Button>
+                </div>
+              </div>
+
+              {/* Price Insights */}
+              <div className="mt-4 pt-3 border-t border-orange-100">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="w-4 h-4 text-green-600" />
+                    <span className="text-gray-700">
+                      Save up to ₹{Math.round(priceDifference / 1000)}k ({Math.round(savingsPercentage)}% off average)
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1 text-xs text-gray-500">
+                    <Users className="w-3 h-3" />
+                    <span>1,234 people viewing</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Main Content */}
+        <div className="flex gap-6">
+          {/* Main Results Section */}
+          <div className="flex-1">
+            {/* Results Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {isLoading ? 'Loading...' : `${flightResults.length} Flights Found`}
+                </h2>
+                {!isLoading && flightResults.length > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-500">from</span>
+                    <span className="font-medium">{fromLabel}</span>
+                    <span className="text-sm text-gray-500">to</span>
+                    <span className="font-medium">{toLabel}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm">
+                  <Filter className="w-4 h-4 mr-2" />
+                  More Filters
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Menu className="w-4 h-4 mr-2" />
+                  Sort
                 </Button>
               </div>
-
-              {/* Stops Filter */}
-              <div className="bg-white rounded-lg border p-4">
-                <button 
-                  onClick={() => setExpandedStops(!expandedStops)}
-                  className="flex items-center justify-between w-full text-left"
-                >
-                  <h3 className="font-medium text-gray-900">STOPS</h3>
-                  {expandedStops ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                {expandedStops && (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="direct"
-                          checked={stops.direct}
-                          onCheckedChange={(checked) => setStops(prev => ({...prev, direct: checked === true}))}
-                        />
-                        <label htmlFor="direct" className="text-sm">Direct</label>
-                      </div>
-                      <span className="text-sm text-gray-500">₽ 2,119</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="one-stop"
-                          checked={stops.oneStop}
-                          onCheckedChange={(checked) => setStops(prev => ({...prev, oneStop: checked === true}))}
-                        />
-                        <label htmlFor="one-stop" className="text-sm">1 stop</label>
-                      </div>
-                      <span className="text-sm text-gray-500">₽ 1,365</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox 
-                          id="two-plus"
-                          checked={stops.twoPlus}
-                          onCheckedChange={(checked) => setStops(prev => ({...prev, twoPlus: checked === true}))}
-                        />
-                        <label htmlFor="two-plus" className="text-sm">2+ stops</label>
-                      </div>
-                      <span className="text-sm text-gray-500">₽ 1,703</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Booking Options Filter */}
-              <div className="bg-white rounded-lg border p-4">
-                <button 
-                  onClick={() => setExpandedBooking(!expandedBooking)}
-                  className="flex items-center justify-between w-full text-left"
-                >
-                  <h3 className="font-medium text-gray-900">BOOKING OPTIONS</h3>
-                  {expandedBooking ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                {expandedBooking && (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="book-wego"
-                        checked={booking.wego}
-                        onCheckedChange={(checked) => setBooking(prev => ({...prev, wego: checked === true}))}
-                      />
-                      <label htmlFor="book-wego" className="text-sm">Book on Wego</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="book-airlines"
-                        checked={booking.airlines}
-                        onCheckedChange={(checked) => setBooking(prev => ({...prev, airlines: checked === true}))}
-                      />
-                      <label htmlFor="book-airlines" className="text-sm">Book with Airlines</label>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Price Filter */}
-              <div className="bg-white rounded-lg border p-4">
-                <button 
-                  onClick={() => setExpandedPrice(!expandedPrice)}
-                  className="flex items-center justify-between w-full text-left"
-                >
-                  <h3 className="font-medium text-gray-900">PRICE</h3>
-                  {expandedPrice ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                {expandedPrice && (
-                  <div className="mt-4 space-y-4">
-                    <div className="flex justify-between text-sm">
-                      <span>₽ {priceRange[0]}</span>
-                      <span>₽ {priceRange[1]}</span>
-                    </div>
-                    <Slider
-                      value={priceRange}
-                      onValueChange={setPriceRange}
-                      max={12695}
-                      min={1365}
-                      step={100}
-                      className="w-full"
-                    />
-                    <div className="text-sm text-gray-500">
-                      Total Price
-                      <br />
-                      including taxes
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
-            {/* Results Content */}
-            <div className="flex-1">
-              {/* Sort Tabs */}
-              <div className="flex space-x-8 mb-6 border-b">
-                <div className="flex flex-col items-center pb-3">
-                  <span className="text-green-600 font-medium">Recommended</span>
-                  <span className="text-sm text-gray-500">₽ 1,691</span>
-                  <div className="w-full h-0.5 bg-green-600 mt-2"></div>
-                </div>
-                <div className="flex flex-col items-center pb-3">
-                  <span className="text-gray-600">Cheapest</span>
-                  <span className="text-sm text-gray-500">₽ 1,365</span>
-                </div>
-                <div className="flex flex-col items-center pb-3">
-                  <span className="text-gray-600">Fastest</span>
-                  <span className="text-sm text-gray-500">₽ 2,365</span>
-                </div>
-                <div className="ml-auto">
-                  <Select defaultValue="flight-time">
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="flight-time">Sort By Flight Time</SelectItem>
-                      <SelectItem value="price">Sort By Price</SelectItem>
-                      <SelectItem value="duration">Sort By Duration</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Flight Results */}
+            {/* Loading State */}
+            {isLoading && (
               <div className="space-y-4">
-                {/* Emirates Result */}
-                <div className="bg-white rounded-lg border border-red-200 p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="bg-red-500 text-white px-3 py-1 rounded text-sm font-medium">
-                      Fly Emirates. Fly Better.
-                    </div>
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Sponsored</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-4">Book directly with no extra fees</p>
-                  
-                  <div className="grid grid-cols-3 gap-8">
-                    {/* Outbound Flight */}
-                    <div className="col-span-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-red-500 rounded flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">EK</span>
-                        </div>
-                        <span className="text-sm text-gray-600">Emirates</span>
-                      </div>
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
                       <div className="flex items-center justify-between">
-                        <div className="text-center">
-                          <div className="text-lg font-bold">22:00</div>
-                          <div className="text-sm text-gray-500">DXB</div>
-                        </div>
-                        <div className="flex flex-col items-center flex-1 mx-4">
-                          <span className="text-xs text-gray-500">3h 50m</span>
-                          <div className="w-full h-px bg-gray-300 my-1 relative">
-                            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-300 rounded-full"></div>
+                        <div className="flex items-center space-x-6">
+                          <Skeleton className="w-12 h-12 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-24" />
                           </div>
-                          <span className="text-xs text-gray-500">Direct</span>
                         </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold">00:50</div>
-                          <div className="text-sm text-gray-500">CAI</div>
-                          <div className="text-xs text-gray-400">+1</div>
+                        <div className="text-right space-y-2">
+                          <Skeleton className="h-6 w-20" />
+                          <Skeleton className="h-4 w-16" />
                         </div>
                       </div>
-                    </div>
-
-                    {/* Return Flight */}
-                    <div className="col-span-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-red-500 rounded flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">EK</span>
-                        </div>
-                        <span className="text-sm text-gray-600">Emirates</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-center">
-                          <div className="text-lg font-bold">13:10</div>
-                          <div className="text-sm text-gray-500">CAI</div>
-                        </div>
-                        <div className="flex flex-col items-center flex-1 mx-4">
-                          <span className="text-xs text-gray-500">3h 20m</span>
-                          <div className="w-full h-px bg-gray-300 my-1 relative">
-                            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-300 rounded-full"></div>
-                          </div>
-                          <span className="text-xs text-gray-500">Direct</span>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold">17:30</div>
-                          <div className="text-sm text-gray-500">DXB</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Price */}
-                    <div className="col-span-1 flex flex-col justify-center items-end">
-                      <div className="text-2xl font-bold">₽ 2,365</div>
-                      <div className="text-sm text-gray-500">Total price</div>
-                      <Button className="bg-red-500 hover:bg-red-600 text-white mt-2">
-                        View Deal
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Flynas Result */}
-                <div className="bg-white rounded-lg border p-6">
-                  <div className="grid grid-cols-3 gap-8">
-                    <div className="col-span-2">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
-                          <span className="text-blue-600 text-xs font-bold">XY</span>
-                        </div>
-                        <span className="text-sm text-gray-600">flynas</span>
-                        <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded text-xs">Best Value</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-center">
-                          <div className="text-lg font-bold">11:25</div>
-                          <div className="text-sm text-gray-500">DXB</div>
-                        </div>
-                        <div className="flex flex-col items-center flex-1 mx-4">
-                          <span className="text-xs text-gray-500">8h 55m</span>
-                          <div className="w-full h-px bg-gray-300 my-1 relative">
-                            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-300 rounded-full"></div>
-                          </div>
-                          <span className="text-xs text-gray-500">1 stop RUH</span>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold">19:20</div>
-                          <div className="text-sm text-gray-500">CAI</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-span-1 flex flex-col justify-center items-end">
-                      <div className="text-sm text-gray-500 mb-1">from 2 websites</div>
-                      <div className="text-2xl font-bold">₽ 1,691</div>
-                      <div className="text-sm text-gray-500">Total price</div>
-                      <Button variant="outline" className="mt-2">
-                        View Deal
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* EgyptAir Result */}
-                <div className="bg-white rounded-lg border p-6">
-                  <div className="grid grid-cols-3 gap-8">
-                    <div className="col-span-2">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-10 h-10 bg-blue-900 rounded flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">MS</span>
-                        </div>
-                        <span className="text-sm text-gray-600">EgyptAir</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-center">
-                          <div className="text-lg font-bold">23:30</div>
-                          <div className="text-sm text-gray-500">CAI</div>
-                        </div>
-                        <div className="flex flex-col items-center flex-1 mx-4">
-                          <span className="text-xs text-gray-500">3h 25m</span>
-                          <div className="w-full h-px bg-gray-300 my-1 relative">
-                            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-300 rounded-full"></div>
-                          </div>
-                          <span className="text-xs text-gray-500">Direct</span>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-bold">03:55</div>
-                          <div className="text-sm text-gray-500">DXB</div>
-                          <div className="text-xs text-gray-400">+1</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-span-1 flex flex-col justify-center items-end">
-                      <div className="text-2xl font-bold">₽ 1,691</div>
-                      <div className="text-sm text-gray-500">Total price</div>
-                      <Button variant="outline" className="mt-2">
-                        View Deal
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </div>
+            )}
+
+            {/* Flight Results */}
+            {!isLoading && (
+              <div className="space-y-4">
+                {flightResults.map((flight, index) => (
+                  <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                          {/* Airline Info */}
+                          <div className="text-center">
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                              <Plane className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div className="text-sm font-medium text-gray-900">{flight.airline}</div>
+                            <div className="text-xs text-gray-500">{flight.aircraft}</div>
+                          </div>
+
+                          {/* Flight Details */}
+                          <div className="flex items-center space-x-8">
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-gray-900">
+                                {formatTime(flight.departureTime)}
+                              </div>
+                              <div className="text-sm text-gray-500">{flight.departureAirport}</div>
+                            </div>
+                            
+                            <div className="text-center">
+                              <div className="text-sm text-gray-500">{flight.duration}</div>
+                              <div className="flex items-center space-x-1">
+                                <div className="w-16 h-0.5 bg-gray-300"></div>
+                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                <div className="w-16 h-0.5 bg-gray-300"></div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {flight.stops === 0 ? 'Direct' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
+                              </div>
+                            </div>
+
+                            <div className="text-center">
+                              <div className="text-lg font-bold text-gray-900">
+                                {(() => {
+                                  const departure = new Date(flight.departureTime);
+                                  const durationParts = flight.duration.split(' ');
+                                  const hours = parseInt(durationParts[0].replace('h', ''));
+                                  const minutes = parseInt(durationParts[1].replace('m', ''));
+                                  const arrival = new Date(departure.getTime() + (hours * 60 + minutes) * 60000);
+                                  return formatTime(arrival.toISOString());
+                                })()}
+                              </div>
+                              <div className="text-sm text-gray-500">{flight.arrivalAirport}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Price and Actions */}
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹{flight.price.toLocaleString()}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-3">
+                            {flight.baggage} • {flight.meal}
+                          </div>
+                          <Button className="bg-green-600 hover:bg-green-700">
+                            Select
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Additional Info */}
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <div className="flex items-center space-x-4">
+                            <span>Flight {flight.airline} {Math.floor(Math.random() * 9999) + 1000}</span>
+                            <span>•</span>
+                            <span>{flight.aircraft}</span>
+                            <span>•</span>
+                            <span>Economy</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Star className="w-4 h-4 text-yellow-400" />
+                            <span>4.2</span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* No Results */}
+            {!isLoading && flightResults.length === 0 && (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Plane className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No flights found</h3>
+                  <p className="text-gray-500 mb-4">Try adjusting your search criteria</p>
+                  <Button variant="outline" onClick={() => navigate("/flight-booking")}>
+                    Modify Search
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Right Side - AI Components */}
+          {/* Right Sidebar */}
           <div className="w-80 space-y-4">
-            {/* Ask Question Input */}
-            <Card className="border-blue-200 shadow-sm">
+            {/* AI Chat Interface */}
+            <Card className="border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 shadow-sm">
               <CardContent className="p-4">
-                <div className="space-y-3">
-                  <label htmlFor="ask-question" className="block text-sm font-medium text-gray-700">
-                    Ask another question
-                  </label>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-2.5 h-2.5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-900">
+                        🤖 AI Travel Assistant
+                      </h3>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                    AI Powered
+                  </Badge>
+                </div>
+
+                {/* Chat Messages */}
+                <div className="space-y-3 mb-3 max-h-64 overflow-y-auto">
+                  {conversation.map((msg, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="bg-white p-2 rounded border border-purple-200">
+                        <p className="text-xs text-gray-700">{msg.question}</p>
+                      </div>
+                      <div className="bg-purple-50 p-2 rounded border border-purple-200">
+                        <p className="text-xs text-gray-700">{msg.answer.summary}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Input */}
+                <div className="flex space-x-2">
                   <Textarea
-                    id="ask-question"
+                    placeholder="Ask about flights, prices, or recommendations..."
                     value={newQuestion}
                     onChange={(e) => setNewQuestion(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="e.g., Can I add a stopover?"
-                    className="resize-none text-sm"
-                    rows={2}
-                    disabled={isLoading}
+                    className="text-xs min-h-[60px] resize-none"
                   />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500">Ctrl/⌘ + Enter to send</p>
-                    <Button 
-                      onClick={handleAskQuestion}
-                      disabled={!newQuestion.trim() || isLoading}
-                      className="bg-blue-600 hover:bg-blue-700"
-                      size="sm"
-                    >
-                      {isLoading ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Send className="w-3 h-3" />
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleAskQuestion}
+                    disabled={isAskingQuestion || !newQuestion.trim()}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Send className="w-3 h-3" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* AI Search Summary */}
-            <Card className="border-blue-200 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2 text-lg">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span>Here's what we found</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-3 w-3/4" />
+            {/* Filters */}
+            <Card className="border-gray-200 shadow-sm">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-4">Filters</h3>
+                
+                {/* Stops */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Stops</span>
+                    <button
+                      onClick={() => setExpandedStops(!expandedStops)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {expandedStops ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
                   </div>
-                ) : (
-                  <>
-                    {/* Callouts */}
+                  {expandedStops && (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="direct"
+                          checked={stops.direct}
+                          onCheckedChange={(checked) => setStops(prev => ({ ...prev, direct: checked === true }))}
+                        />
+                        <label htmlFor="direct" className="text-sm">Direct flights only</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="oneStop"
+                          checked={stops.oneStop}
+                          onCheckedChange={(checked) => setStops(prev => ({ ...prev, oneStop: checked === true }))}
+                        />
+                        <label htmlFor="oneStop" className="text-sm">1 stop</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="twoPlus"
+                          checked={stops.twoPlus}
+                          onCheckedChange={(checked) => setStops(prev => ({ ...prev, twoPlus: checked === true }))}
+                        />
+                        <label htmlFor="twoPlus" className="text-sm">2+ stops</label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price Range */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Price Range</span>
+                    <button
+                      onClick={() => setExpandedPrice(!expandedPrice)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {expandedPrice ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {expandedPrice && (
                     <div className="space-y-3">
-                      {/* Cheapest Fare */}
-                      <div className="p-3 border-l-3 border-green-500 bg-green-50 rounded-r">
-                        <h4 className="font-medium text-green-800 text-sm mb-1">Cheapest fare</h4>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{currentAnswer?.cheapestFare.airline}</span>
-                            <span className="text-sm font-bold text-green-700">{currentAnswer?.cheapestFare.price}</span>
-                          </div>
-                          <p className="text-xs text-green-700">{currentAnswer?.cheapestFare.details}</p>
-                        </div>
-                      </div>
-
-                      {/* Best for You */}
-                      <div className="p-3 border-l-3 border-blue-500 bg-blue-50 rounded-r">
-                        <h4 className="font-medium text-blue-800 text-sm mb-1">Best for you</h4>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{currentAnswer?.bestForYou.airline}</span>
-                            <span className="text-sm font-bold text-blue-700">{currentAnswer?.bestForYou.price}</span>
-                          </div>
-                          <p className="text-xs text-blue-700">{currentAnswer?.bestForYou.details}</p>
-                        </div>
+                      <Slider
+                        value={priceRange}
+                        onValueChange={setPriceRange}
+                        max={20000}
+                        min={1000}
+                        step={100}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>₹{priceRange[0].toLocaleString()}</span>
+                        <span>₹{priceRange[1].toLocaleString()}</span>
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* AI Summary */}
-                    <div className="p-3 bg-gray-50 rounded border">
-                      <p className="text-sm text-gray-700 leading-relaxed">{currentAnswer?.summary}</p>
-                    </div>
-
-                    {/* Conversation History */}
-                    {conversation.length > 1 && (
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-gray-700 flex items-center space-x-1">
-                          <MessageSquare className="w-3 h-3" />
-                          <span>Previous questions</span>
-                        </h4>
-                        <div className="space-y-1 max-h-24 overflow-y-auto">
-                          {conversation.slice(0, -1).map((item, index) => (
-                            <div key={index} className="text-xs p-2 bg-white rounded border">
-                              <p className="text-gray-600">Q: {item.question}</p>
-                            </div>
-                          ))}
-                        </div>
+                {/* Booking Options */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Booking Options</span>
+                    <button
+                      onClick={() => setExpandedBooking(!expandedBooking)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {expandedBooking ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {expandedBooking && (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="wego"
+                          checked={booking.wego}
+                          onCheckedChange={(checked) => setBooking(prev => ({ ...prev, wego: checked === true }))}
+                        />
+                        <label htmlFor="wego" className="text-sm">Book with wego</label>
                       </div>
-                    )}
-                  </>
-                )}
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="airlines"
+                          checked={booking.airlines}
+                          onCheckedChange={(checked) => setBooking(prev => ({ ...prev, airlines: checked === true }))}
+                        />
+                        <label htmlFor="airlines" className="text-sm">Book with airlines</label>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
-
-            {/* Original Ad */}
-            <div className="bg-gradient-to-br from-blue-900 to-purple-900 rounded-lg p-6 text-white">
-              <div className="text-center">
-                <div className="text-2xl font-bold mb-2">الجزيرة</div>
-                <div className="text-lg mb-4">END OF YEAR DEALS</div>
-                <div className="text-6xl font-bold text-yellow-400 mb-2">25%</div>
-                <div className="text-sm mb-4">OFF</div>
-                <div className="text-lg font-bold mb-2">ON ALL FLIGHTS</div>
-                <div className="text-xs mb-4">USE CODE: J25ALE25</div>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6">
-                  Book Now
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

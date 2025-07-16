@@ -93,7 +93,7 @@ const FlightSearch = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
         {/* From */}
         <div className="md:col-span-3 relative">
-          <label className="text-sm text-wego-text-light mb-2 block">From</label>
+          <label className="text-sm text-wego-text-light mb-2 block text-left">From</label>
           <div className="relative">
             <MapPin className="absolute left-3 top-3 h-4 w-4 text-wego-text-light" />
             <Input
@@ -147,7 +147,7 @@ const FlightSearch = () => {
 
         {/* To */}
         <div className="md:col-span-3 relative">
-          <label className="text-sm text-wego-text-light mb-2 block">To</label>
+          <label className="text-sm text-wego-text-light mb-2 block text-left">To</label>
           <div className="relative">
             <MapPin className="absolute left-3 top-3 h-4 w-4 text-wego-text-light" />
             <Input
@@ -190,7 +190,7 @@ const FlightSearch = () => {
 
         {/* Dates */}
         <div className="md:col-span-2">
-          <label className="text-sm text-wego-text-light mb-2 block">Depart</label>
+          <label className="text-sm text-wego-text-light mb-2 block text-left">Depart</label>
           <Popover open={departPopoverOpen} onOpenChange={setDepartPopoverOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -223,7 +223,7 @@ const FlightSearch = () => {
         {/* Return Date (if round-trip) */}
         {tripType === "round-trip" && (
           <div className="md:col-span-2">
-            <label className="text-sm text-wego-text-light mb-2 block">Return</label>
+            <label className="text-sm text-wego-text-light mb-2 block text-left">Return</label>
             <Popover open={returnPopoverOpen} onOpenChange={setReturnPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -271,7 +271,7 @@ const FlightSearch = () => {
                 paymentTypes: [], // You can add selected payment types if needed
                 tripType
               };
-              navigate('/flight-results', { state: { searchRequest, searchType: 'traditional' } });
+              navigate('/ai-flight-results', { state: { searchRequest, searchType: 'ai-powered' } });
             }}
             disabled={!selectedFrom || !selectedTo}
           >
