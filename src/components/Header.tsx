@@ -15,9 +15,7 @@ const Header = () => {
               <Plane className="h-8 w-8 text-white" />
               <span className="text-2xl font-bold text-white">wego</span>
             </div>
-            <a href="#" className="text-white/90 hover:text-white text-sm hidden md:block">
-              WegoPro Business Travel
-            </a>
+             
           </div>
 
           {/* Right side menu */}
@@ -68,9 +66,7 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4 border-t border-white/20">
             <div className="flex flex-col space-y-4 pt-4">
-              <a href="#" className="text-white/90 hover:text-white text-sm">
-                WegoPro Business Travel
-              </a>
+               
               <a href="#" className="text-white/90 hover:text-white text-sm">
                 Support
               </a>

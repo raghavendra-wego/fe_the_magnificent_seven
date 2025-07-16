@@ -33,16 +33,7 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest }: Sm
     loadSummary();
   }, [flightResults, searchRequest]);
 
-  // Auto-collapse after 10 seconds
-  useEffect(() => {
-    if (summary && !isLoading) {
-      const timer = setTimeout(() => {
-        setIsExpanded(false);
-      }, 10000); // 10 seconds
-
-      return () => clearTimeout(timer);
-    }
-  }, [summary, isLoading]);
+ 
 
   const loadSummary = async () => {
     setIsLoading(true);
