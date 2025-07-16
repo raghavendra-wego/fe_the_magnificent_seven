@@ -51,10 +51,18 @@ const FlightBooking = () => {
       searchType: 'ai-prompt' 
     });
     
-    // Navigate to results page with the search query
+    // Navigate to unified results page with the search query
     navigate('/flight-results', { 
       state: { 
-        promptQuery: promptSearch,
+        searchRequest: {
+          promptQuery: promptSearch,
+          from: { city: "Dubai", country: "United Arab Emirates", code: "DXB" },
+          to: { city: "Cairo", country: "Egypt", code: "CAI" },
+          departDate: "2024-07-16",
+          tripType: "one-way",
+          passengers: { adults: 1, children: 0, infants: 0 },
+          travelClass: "economy"
+        },
         searchType: 'ai-prompt' 
       } 
     });
@@ -68,10 +76,10 @@ const FlightBooking = () => {
       description: "Finding the best options for you",
     });
     
-    // Navigate to results page with traditional search data
+    // Navigate to unified results page with traditional search data
     navigate('/flight-results', {
       state: {
-        searchData: {
+        searchRequest: {
           tripType,
           departDate,
           returnDate,
@@ -301,15 +309,15 @@ const FlightBooking = () => {
           <CardContent>
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                <Badge className="bg-blue-100 text-blue-700">
                   <Filter className="w-3 h-3 mr-1" />
                   Nonstop
                 </Badge>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                <Badge className="bg-blue-100 text-blue-700">
                   <Filter className="w-3 h-3 mr-1" />
                   Morning Flights
                 </Badge>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                <Badge className="bg-blue-100 text-blue-700">
                   <Filter className="w-3 h-3 mr-1" />
                   Baggage Included
                 </Badge>
@@ -327,7 +335,7 @@ const FlightBooking = () => {
         <Button 
           size="lg" 
           className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
-          onClick={() => navigate('/ai-flight-results', { 
+          onClick={() => navigate('/flight-results', { 
             state: { 
               searchRequest: {
                 from: { city: "Delhi", country: "India", code: "DEL" },
@@ -337,7 +345,7 @@ const FlightBooking = () => {
                 passengers: { adults: 1, children: 0, infants: 0 },
                 travelClass: "economy"
               },
-              searchType: 'ai-powered'
+              searchType: 'ai-prompt'
             } 
           })}
         >

@@ -271,7 +271,7 @@ const FlightSearch = () => {
                 paymentTypes: [], // You can add selected payment types if needed
                 tripType
               };
-              navigate('/ai-flight-results', { state: { searchRequest, searchType: 'ai-powered' } });
+              navigate('/flight-results', { state: { searchRequest, searchType: 'traditional' } });
             }}
             disabled={!selectedFrom || !selectedTo}
           >

@@ -46,7 +46,7 @@ import PersonalizedRecommendations from "@/components/PersonalizedRecommendation
 import BookingProgressTracker from "@/components/BookingProgressTracker";
 import ExitIntentModal from "@/components/ExitIntentModal";
 
-const FlightResults = () => {
+const UnifiedFlightResults = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchState = location.state;
@@ -332,7 +332,7 @@ const FlightResults = () => {
   };
 
   const handleFlightSelect = (flight) => {
-    navigate("/flight-booking", {
+    navigate("/", {
       state: {
         selectedFlight: flight,
         searchRequest: searchRequest
@@ -469,7 +469,7 @@ const FlightResults = () => {
               <span className="text-sm font-medium">{classLabel}</span>
               <span className="text-sm font-medium">5 Payment Types</span>
               {searchType === 'ai-prompt' && (
-                <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                <Badge className="bg-purple-100 text-purple-700">
                   <Sparkles className="w-3 h-3 mr-1" />
                   AI Search
                 </Badge>
@@ -518,114 +518,135 @@ const FlightResults = () => {
           />
         </div>
 
-        {/* AI-Powered Results Summary */}
-        {currentAnswer && (
-          <Card className="mb-6 border-gradient-to-r from-blue-50 to-purple-50 shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">AI-Powered Flight Analysis</h2>
-                    <p className="text-sm text-gray-600">Based on your search criteria and preferences</p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700">
-                  AI Powered
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                {/* Cheapest Option */}
-                <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <TrendingDown className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-semibold text-gray-900">Best Value</span>
-                    </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
-                      Cheapest
-                    </Badge>
-                  </div>
-                  <div className="text-2xl font-bold text-green-600 mb-1">
-                    {currentAnswer.cheapestFare?.price}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 mb-1">
-                    {currentAnswer.cheapestFare?.airline}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {currentAnswer.cheapestFare?.details}
-                  </div>
-                </div>
-
-                {/* Best For You */}
-                <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Award className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-semibold text-gray-900">Recommended</span>
-                    </div>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
-                      Best Overall
-                    </Badge>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-600 mb-1">
-                    {currentAnswer.bestForYou?.price}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 mb-1">
-                    {currentAnswer.bestForYou?.airline}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {currentAnswer.bestForYou?.details}
-                  </div>
-                </div>
-
-                {/* Fastest Option */}
-                <div className="bg-white p-4 rounded-lg border border-orange-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-4 h-4 text-orange-600" />
-                      <span className="text-sm font-semibold text-gray-900">Fastest</span>
-                    </div>
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
-                      Quickest
-                    </Badge>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600 mb-1">
-                    {currentAnswer.fastestOption?.price}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 mb-1">
-                    {currentAnswer.fastestOption?.airline}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {currentAnswer.fastestOption?.details}
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mt-0.5">
-                    <Info className="w-3 h-3 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900 mb-1">AI Analysis Summary</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {currentAnswer.summary}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Main Content with Sidebar */}
+        {/* Three Column Layout */}
         <div className="flex gap-6">
-          {/* Main Results Section */}
+          {/* Left Sidebar - Filters */}
+          <div className="w-80 space-y-4">
+            {/* Traditional Filters */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Filters</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                {/* Stops Filter */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Stops</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedStops(!expandedStops)}
+                    >
+                      {expandedStops ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {expandedStops && (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="direct"
+                          checked={stops.direct}
+                          onCheckedChange={(checked) => setStops({ ...stops, direct: checked as boolean })}
+                        />
+                        <label htmlFor="direct" className="text-sm">Direct flights only</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="oneStop"
+                          checked={stops.oneStop}
+                          onCheckedChange={(checked) => setStops({ ...stops, oneStop: checked as boolean })}
+                        />
+                        <label htmlFor="oneStop" className="text-sm">1 stop</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="twoPlus"
+                          checked={stops.twoPlus}
+                          onCheckedChange={(checked) => setStops({ ...stops, twoPlus: checked as boolean })}
+                        />
+                        <label htmlFor="twoPlus" className="text-sm">2+ stops</label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Price Range Filter */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Price Range</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedPrice(!expandedPrice)}
+                    >
+                      {expandedPrice ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {expandedPrice && (
+                    <div className="space-y-3">
+                      <Slider
+                        value={priceRange}
+                        onValueChange={setPriceRange}
+                        max={15000}
+                        min={1000}
+                        step={100}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>₹{priceRange[0].toLocaleString()}</span>
+                        <span>₹{priceRange[1].toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Booking Options */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Booking</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedBooking(!expandedBooking)}
+                    >
+                      {expandedBooking ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {expandedBooking && (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="wego"
+                          checked={booking.wego}
+                          onCheckedChange={(checked) => setBooking({ ...booking, wego: checked as boolean })}
+                        />
+                        <label htmlFor="wego" className="text-sm">Book with Wego</label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="airlines"
+                          checked={booking.airlines}
+                          onCheckedChange={(checked) => setBooking({ ...booking, airlines: checked as boolean })}
+                        />
+                        <label htmlFor="airlines" className="text-sm">Book with Airlines</label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Smart Components in Left Sidebar */}
+            <PersonalizedFilterSuggestions
+              userId="demo-user-123"
+              onFilterSelect={handleFilterSelect}
+              selectedFilters={selectedFilters}
+              searchRequest={searchRequest}
+              compact={true}
+            />
+          </div>
+
+          {/* Main Content - Flight Results */}
           <div className="flex-1">
             {/* Results Header */}
             <div className="flex items-center justify-between mb-6">
@@ -788,7 +809,7 @@ const FlightResults = () => {
             )}
           </div>
 
-          {/* Right Sidebar */}
+          {/* Right Sidebar - AI Features */}
           <div className="w-80 space-y-4">
             {/* AI Chat Section */}
             <Card className="border-blue-200">
@@ -835,121 +856,7 @@ const FlightResults = () => {
               </CardContent>
             </Card>
 
-            {/* Traditional Filters */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Filters</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                {/* Stops Filter */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Stops</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExpandedStops(!expandedStops)}
-                    >
-                      {expandedStops ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                  {expandedStops && (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="direct"
-                          checked={stops.direct}
-                          onCheckedChange={(checked) => setStops({ ...stops, direct: checked })}
-                        />
-                        <label htmlFor="direct" className="text-sm">Direct flights only</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="oneStop"
-                          checked={stops.oneStop}
-                          onCheckedChange={(checked) => setStops({ ...stops, oneStop: checked })}
-                        />
-                        <label htmlFor="oneStop" className="text-sm">1 stop</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="twoPlus"
-                          checked={stops.twoPlus}
-                          onCheckedChange={(checked) => setStops({ ...stops, twoPlus: checked })}
-                        />
-                        <label htmlFor="twoPlus" className="text-sm">2+ stops</label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Price Range Filter */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Price Range</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExpandedPrice(!expandedPrice)}
-                    >
-                      {expandedPrice ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                  {expandedPrice && (
-                    <div className="space-y-3">
-                      <Slider
-                        value={priceRange}
-                        onValueChange={setPriceRange}
-                        max={15000}
-                        min={1000}
-                        step={100}
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>₹{priceRange[0].toLocaleString()}</span>
-                        <span>₹{priceRange[1].toLocaleString()}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Booking Options */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Booking</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setExpandedBooking(!expandedBooking)}
-                    >
-                      {expandedBooking ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                  {expandedBooking && (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="wego"
-                          checked={booking.wego}
-                          onCheckedChange={(checked) => setBooking({ ...booking, wego: checked })}
-                        />
-                        <label htmlFor="wego" className="text-sm">Book with Wego</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="airlines"
-                          checked={booking.airlines}
-                          onCheckedChange={(checked) => setBooking({ ...booking, airlines: checked })}
-                        />
-                        <label htmlFor="airlines" className="text-sm">Book with Airlines</label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Smart Components */}
+            {/* Smart Components in Right Sidebar */}
             <PersonalizedRecommendations
               flights={filteredResults}
               onFlightSelect={handleFlightSelect}
@@ -972,14 +879,6 @@ const FlightResults = () => {
               averagePrice={averagePrice}
               compact={true}
             />
-
-            <PersonalizedFilterSuggestions
-              userId="demo-user-123"
-              onFilterSelect={handleFilterSelect}
-              selectedFilters={selectedFilters}
-              searchRequest={searchRequest}
-              compact={true}
-            />
           </div>
         </div>
       </div>
@@ -997,4 +896,4 @@ const FlightResults = () => {
   );
 };
 
-export default FlightResults;
+export default UnifiedFlightResults;
