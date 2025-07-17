@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,6 +84,16 @@ const UnifiedFlightResults = () => {
   const [apiSummarize, setApiSummarize] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('price'); // 'price', 'duration', 'departure', 'airline'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
+  
+  // AI search response data
+  const [aiSearchData, setAiSearchData] = useState({
+    possibleCities: [],
+    extractedParams: null,
+    originalQuery: ''
+  });
+
+  // Ref to prevent duplicate API calls
+  const isFetchingRef = useRef(false);
 
   // Check localStorage for exit intent dismissal
   useEffect(() => {
@@ -171,7 +181,11 @@ const UnifiedFlightResults = () => {
   useEffect(() => {
     console.log("FlightResults: searchRequest received:", searchRequest);
     
-    if (searchRequest) {
+    // Reset fetching flag when searchRequest changes
+    isFetchingRef.current = false;
+    
+    if (searchRequest && !isFetchingRef.current) {
+      isFetchingRef.current = true;
       setIsLoading(true);
       // Use traditional API if searchType is 'traditional'
       if (searchType === 'traditional') {
@@ -191,6 +205,7 @@ const UnifiedFlightResults = () => {
             setFilteredResults(sortFlights(uiFlights));
             setApiSummarize(summaryData);
             setIsLoading(false);
+            isFetchingRef.current = false;
             
             // Generate initial AI conversation based on search
             const initialConversation = generateInitialConversation(searchRequest, uiFlights);
@@ -198,6 +213,7 @@ const UnifiedFlightResults = () => {
           } catch (error) {
             console.error("FlightResults: Error fetching flights:", error);
             setIsLoading(false);
+            isFetchingRef.current = false;
           }
         };
         fetchFlights();
@@ -208,12 +224,22 @@ const UnifiedFlightResults = () => {
             const aiResponse = await searchAIFlights({ message: searchRequest.message });
             console.log("FlightResults: AI response:", aiResponse);
             
+            // Store AI search data for destination display
+            console.log("AI Search possibleCities:", aiResponse.possibleCities);
+            console.log("AI Search extractedParams:", aiResponse.extractedParams);
+            setAiSearchData({
+              possibleCities: aiResponse.possibleCities || [],
+              extractedParams: aiResponse.extractedParams,
+              originalQuery: aiResponse.originalQuery
+            });
+            
             // Convert to UI format
             const uiFlights = aiResponse.data.map(mapTraditionalToUIFlight);
             setFlightResults(uiFlights);
             setFilteredResults(sortFlights(uiFlights));
             setApiSummarize(aiResponse.summarize);
             setIsLoading(false);
+            isFetchingRef.current = false;
             
             // Generate initial AI conversation based on search
             const initialConversation = generateInitialConversation(searchRequest, uiFlights);
@@ -221,6 +247,7 @@ const UnifiedFlightResults = () => {
           } catch (error) {
             console.error("FlightResults: Error fetching AI flights:", error);
             setIsLoading(false);
+            isFetchingRef.current = false;
             // Show error state instead of mock data
             setFlightResults([]);
             setFilteredResults([]);
@@ -232,6 +259,7 @@ const UnifiedFlightResults = () => {
           // Handle other search types (legacy support)
           console.log("FlightResults: Unsupported search type:", searchType);
           setIsLoading(false);
+          isFetchingRef.current = false;
           setFlightResults([]);
           setFilteredResults([]);
         }
@@ -239,6 +267,7 @@ const UnifiedFlightResults = () => {
       // If no searchRequest, show empty state
       console.log("FlightResults: No searchRequest, showing empty state");
       setIsLoading(false);
+      isFetchingRef.current = false;
       setFlightResults([]);
       setFilteredResults([]);
     }
@@ -265,11 +294,10 @@ const UnifiedFlightResults = () => {
   function formatTime(dateString) {
     if (!dateString) return '--:--';
     try {
-      return new Date(dateString).toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true 
-      });
+      const date = new Date(dateString);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
     } catch {
       return '--:--';
     }
@@ -281,7 +309,19 @@ const UnifiedFlightResults = () => {
     const toCity = searchRequest?.to?.city || 'Destination';
     const departDate = searchRequest?.departDate ? formatDate(searchRequest.departDate) : '';
     const returnDate = searchRequest?.returnDate ? formatDate(searchRequest.returnDate) : '';
-    const tripType = searchRequest?.tripType || 'one-way';
+    
+    // Determine trip type from available data
+    let tripType = searchRequest?.tripType || 'one-way';
+    if (searchType === 'ai-search' && aiSearchData.extractedParams) {
+      const extracted = aiSearchData.extractedParams;
+      tripType = extracted.tripType === 'oneWay' ? 'one-way' : 
+                  extracted.tripType === 'roundTrip' ? 'round-trip' : tripType;
+    }
+    if (flights.length > 0 && flights[0].tripType) {
+      tripType = flights[0].tripType === 'roundTrip' ? 'round-trip' : 
+                 flights[0].tripType === 'oneWay' ? 'one-way' : tripType;
+    }
+    
     const passengers = searchRequest?.passengers?.adults || 1;
     const travelClass = searchRequest?.travelClass || 'economy';
 
@@ -513,10 +553,79 @@ const UnifiedFlightResults = () => {
   const currentAnswer = conversation[conversation.length - 1]?.answer;
 
   // Use searchRequest to build summary and mock results
-  const fromLabel = searchRequest?.from ? `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})` : 'From';
-  const toLabel = searchRequest?.to ? `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})` : 'To';
-  const departLabel = searchRequest?.departDate ? formatDate(searchRequest.departDate) : 'Depart';
-  const returnLabel = searchRequest?.tripType === 'round-trip' && searchRequest?.returnDate ? formatDate(searchRequest.returnDate) : null;
+  let fromLabel = 'From';
+  let toLabel = 'To';
+  
+  // For AI search, extract destination info from possibleCities or flight results
+  if (searchType === 'ai-search') {
+    console.log("Extracting destinations for AI search:", { aiSearchData, flightResults });
+    if (aiSearchData.possibleCities && aiSearchData.possibleCities.length > 0) {
+      const firstCity = aiSearchData.possibleCities[0];
+      fromLabel = `${firstCity.departure}`;
+      toLabel = `${firstCity.arrival}`;
+      console.log("Using possibleCities for destinations:", { fromLabel, toLabel });
+    } else if (flightResults.length > 0) {
+      // Extract from first flight result if possibleCities not available
+      const firstFlight = flightResults[0];
+      fromLabel = firstFlight.departureAirport || 'From';
+      toLabel = firstFlight.arrivalAirport || 'To';
+      console.log("Using flight results for destinations:", { fromLabel, toLabel });
+    }
+  } else if (searchRequest?.from && searchRequest?.to) {
+    // For traditional search, both from and to should be available
+    fromLabel = `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})`;
+    toLabel = `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})`;
+  } else if (searchRequest?.from) {
+    // Only from is available
+    fromLabel = `${searchRequest.from.city}, ${searchRequest.from.country} (${searchRequest.from.code})`;
+  } else if (searchRequest?.to) {
+    // Only to is available
+    toLabel = `${searchRequest.to.city}, ${searchRequest.to.country} (${searchRequest.to.code})`;
+  }
+  
+  // Determine trip type and dates based on search type and available data
+  let tripType = searchRequest?.tripType || 'one-way';
+  let departDate = searchRequest?.departDate;
+  let returnDate = searchRequest?.returnDate;
+  
+  // For AI search, use the extracted params if available
+  if (searchType === 'ai-search' && aiSearchData.extractedParams) {
+    const extracted = aiSearchData.extractedParams;
+    console.log("AI Search extracted params:", extracted);
+    
+    tripType = extracted.tripType === 'oneWay' ? 'one-way' : 
+                extracted.tripType === 'roundTrip' ? 'round-trip' : tripType;
+    
+    // Convert date format from YYYYMMDD to YYYY-MM-DD for display
+    if (extracted.startDate) {
+      const startDateStr = extracted.startDate;
+      departDate = `${startDateStr.slice(0, 4)}-${startDateStr.slice(4, 6)}-${startDateStr.slice(6, 8)}`;
+      console.log("Converted start date:", { original: extracted.startDate, converted: departDate });
+    }
+    if (extracted.endDate) {
+      const endDateStr = extracted.endDate;
+      returnDate = `${endDateStr.slice(0, 4)}-${endDateStr.slice(4, 6)}-${endDateStr.slice(6, 8)}`;
+      console.log("Converted end date:", { original: extracted.endDate, converted: returnDate });
+    }
+  }
+  
+  // Also check flight results for trip type if available
+  if (flightResults.length > 0) {
+    const firstFlight = flightResults[0];
+    if (firstFlight.tripType) {
+      const originalTripType = tripType;
+      tripType = firstFlight.tripType === 'roundTrip' ? 'round-trip' : 
+                 firstFlight.tripType === 'oneWay' ? 'one-way' : tripType;
+      console.log("Trip type from flight results:", { 
+        original: originalTripType, 
+        flightTripType: firstFlight.tripType, 
+        final: tripType 
+      });
+    }
+  }
+  
+  const departLabel = departDate ? formatDate(departDate) : 'Depart';
+  const returnLabel = tripType === 'round-trip' && returnDate ? formatDate(returnDate) : null;
   const paxLabel = searchRequest?.passengers ? `${searchRequest.passengers.adults} Adult${searchRequest.passengers.adults > 1 ? 's' : ''}` : '1 Adult';
   const classLabel = searchRequest?.travelClass ? searchRequest.travelClass.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Economy';
 
@@ -583,11 +692,11 @@ const UnifiedFlightResults = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">{searchRequest?.tripType === 'one-way' ? 'One-way' : searchRequest?.tripType === 'multi-city' ? 'Multi-city' : 'Round-trip'}</span>
+              <span className="text-sm text-gray-500">{tripType === 'one-way' ? 'One-way' : tripType === 'multi-city' ? 'Multi-city' : 'Round-trip'}</span>
               <span className="text-sm font-medium">{paxLabel}</span>
               <span className="text-sm font-medium">{classLabel}</span>
               <span className="text-sm font-medium">5 Payment Types</span>
-              {searchType === 'ai-prompt' && (
+              {searchType === 'ai-search' && (
                 <Badge className="bg-purple-100 text-purple-700">
                   <Sparkles className="w-3 h-3 mr-1" />
                   AI Search
@@ -609,7 +718,7 @@ const UnifiedFlightResults = () => {
               <span className="text-sm">Depart</span>
               <span className="font-medium">{departLabel}</span>
             </div>
-            {searchRequest?.tripType === 'round-trip' && (
+            {tripType === 'round-trip' && (
               <div className="flex items-center space-x-2">
                 <span className="text-sm">Return</span>
                 <span className="font-medium">{returnLabel}</span>
@@ -803,37 +912,53 @@ const UnifiedFlightResults = () => {
               {isLoading ? (
                 // Loading skeletons
                 Array.from({ length: 3 }).map((_, index) => (
-                  <Card key={index} className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-6">
-                        <Skeleton className="w-12 h-12 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Skeleton className="h-8 w-24 mb-2" />
-                        <Skeleton className="h-4 w-16" />
+                  <Card key={index} className="relative">
+                    {/* Sticky loading skeleton */}
+                    <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 px-6 py-2 flex items-center justify-end">
+                      <div className="flex items-center space-x-3">
+                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-6 w-12" />
                       </div>
                     </div>
+                    <CardContent className="p-6 pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                          <Skeleton className="w-12 h-12 rounded-full" />
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
                   </Card>
                 ))
               ) : (
                 filteredResults.map((flight, index) => (
-                  <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-6">
+                  <Card key={index} className="hover:shadow-md transition-shadow cursor-pointer relative">
+                    {/* Sticky Price and Select Button at Top */}
+                    <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 px-6 py-2 flex items-center justify-end">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-xl font-bold text-green-600">
+                          ${flight.price.toLocaleString()}
+                        </div>
+                        <Button className="bg-green-600 hover:bg-green-700 text-xs px-3 py-1">
+                          Select
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <CardContent className="p-6 pt-4">
                       {/* Onward (Outbound) Block */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-6">
                           {/* Airline Info */}
-                          <div className="text-center justify-center">
+                          <div className="text-center">
                             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
                               <img src={`https://assets.wego.com/image/upload/h_240,c_fill,f_auto,fl_lossy,q_auto:best,g_auto/v20250717/flights/airlines_square/${flight.aircraftCode}.png`} alt={flight.airline} className="w-6 h-6" />
                             </div>
                             <div className="text-sm font-medium text-gray-900">{flight.airline}</div>
                             <div className="text-xs text-gray-500">{flight.aircraft}</div>
-                           
                           </div>
                           {/* Flight Details */}
                           <div className="flex items-center space-x-8">
@@ -862,18 +987,6 @@ const UnifiedFlightResults = () => {
                             </div>
                           </div>
                         </div>
-                        {/* Price and Actions for one-way only */}
-                        {!flight.isRoundTrip && (
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-green-600">
-                              ${flight.price.toLocaleString()}
-                            </div>
-                           
-                            <Button className="bg-green-600 hover:bg-green-700">
-                              Select
-                            </Button>
-                          </div>
-                        )}
                       </div>
                       {/* Outbound Segments for Multi-stop flights */}
                       {flight.segments && flight.segments.length > 1 && (
@@ -901,7 +1014,7 @@ const UnifiedFlightResults = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-6">
                               {/* Airline Info for Return (reuse) */}
-                              <div className="text-center justify-center">
+                              <div className="text-center">
                                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
                                 <img src={`https://assets.wego.com/image/upload/h_240,c_fill,f_auto,fl_lossy,q_auto:best,g_auto/v20250717/flights/airlines_square/${flight.aircraftCode}.png`} alt={flight.airline} className="w-6 h-6" />
                                 </div>
@@ -935,16 +1048,6 @@ const UnifiedFlightResults = () => {
                                 </div>
                               </div>
                             </div>
-                            {/* Price and Actions for round-trip (on return block) */}
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-green-600">
-                                ${flight.price.toLocaleString()}
-                              </div>
-                              
-                              <Button className="bg-green-600 hover:bg-green-700">
-                                Select
-                              </Button>
-                            </div>
                           </div>
                           {/* Return Segments for Multi-stop flights */}
                           {flight.inboundSegments && flight.inboundSegments.length > 1 && (
@@ -977,10 +1080,10 @@ const UnifiedFlightResults = () => {
                             <span>{flight.aircraft}</span>
                             <span>•</span>
                             <span>Economy</span>
-                            {flight.tripType && (
+                            {flight.isRoundTrip && (
                               <>
                                 <span>•</span>
-                                <span className="capitalize">{flight.tripType}</span>
+                                <span className="capitalize">Round-trip</span>
                               </>
                             )}
                           </div>
@@ -1001,7 +1104,7 @@ const UnifiedFlightResults = () => {
               <Card className="text-center py-12">
                 <CardContent>
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <img src={`https://assets.wego.com/image/upload/h_240,c_fill,f_auto,fl_lossy,q_auto:best,g_auto/v20250717/flights/airlines_square/${flight.aircraftCode}.png`} alt={flight.airline} className="w-6 h-6" />
+                    <Plane className="w-8 h-8 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No flights match your filters</h3>
                   <p className="text-gray-500 mb-4">Try adjusting your search criteria or removing some filters</p>
