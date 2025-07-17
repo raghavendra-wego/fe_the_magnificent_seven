@@ -283,7 +283,7 @@ const FlightBooking = () => {
               </div>
               <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
                 <Target className="w-4 h-4 text-green-600 mt-0.5" />
-                <p className="text-sm text-gray-700">Indigo has all the nonstop flights under ₹5,000</p>
+                <p className="text-sm text-gray-700">Indigo has all the nonstop flights under $5,000</p>
               </div>
               <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
                 <Zap className="w-4 h-4 text-green-600 mt-0.5" />

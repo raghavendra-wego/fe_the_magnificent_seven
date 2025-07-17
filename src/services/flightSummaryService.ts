@@ -1,6 +1,40 @@
 // AI-Powered Flight Summary Service
 // This service analyzes flight search results and generates intelligent insights
 
+// New API interfaces for traditional search
+export interface TraditionalSearchRequest {
+  departure: string;
+  arrival: string;
+  startDate: string;
+  endDate?: string; // optional for one-way
+}
+
+export interface FlightLeg {
+  arr: string;
+  arrAirport: string;
+  arrivalNextDay?: boolean;
+  dep: string;
+  depAirport: string;
+  flightNum: string;
+}
+
+export interface FlightSegments {
+  flightDuration: number;
+  legs: FlightLeg[];
+  stops: number;
+}
+
+export interface TraditionalFlightResult {
+  airlineCode: string;
+  carrier: string;
+  inboundSegments?: FlightSegments;
+  outboundSegments: FlightSegments;
+  metaScore: number;
+  totalPrice: number;
+  tripType: string;
+}
+
+// Legacy interfaces for backward compatibility
 export interface FlightResult {
   price: number;
   airline: string;
@@ -247,7 +281,7 @@ const getRouteDuration = (fromCode?: string, toCode?: string): string => {
   return routes[routeKey] || "2h 30m";
 };
 
-const getStopsForRoute = (fromCode?: string, toCode?: string, airline: string): number => {
+const getStopsForRoute = (fromCode: string, toCode: string, airline: string): number => {
   // Premium airlines typically offer more direct flights
   const premiumAirlines = ["Emirates", "Qatar Airways", "Etihad", "Vistara"];
   const budgetAirlines = ["SpiceJet", "GoAir", "AirAsia"];
@@ -282,9 +316,9 @@ const generateRouteInsights = (flights: FlightResult[], searchRequest?: SearchRe
 
   // Price-based insights
   if (priceVariation > 100) {
-    insights.push(`Huge price variation (${Math.round(priceVariation)}%) - book early for savings up to ₹${(priceRange / 1000).toFixed(0)}k`);
+    insights.push(`Huge price variation (${Math.round(priceVariation)}%) - book early for savings up to $${(priceRange / 1000).toFixed(0)}k`);
   } else if (priceVariation > 50) {
-    insights.push(`Significant price variation (${Math.round(priceVariation)}%) - flexible dates could save ₹${(priceRange / 1000).toFixed(0)}k`);
+    insights.push(`Significant price variation (${Math.round(priceVariation)}%) - flexible dates could save $${(priceRange / 1000).toFixed(0)}k`);
   } else if (priceVariation > 25) {
     insights.push(`Moderate price variation (${Math.round(priceVariation)}%) - compare all options for best deal`);
   }
@@ -382,7 +416,7 @@ const generateRouteInsights = (flights: FlightResult[], searchRequest?: SearchRe
     ],
     "BOM-DEL": [
       "Evening flights (6-9 PM) offer the best value for money",
-      "SpiceJet and GoAir provide budget options under ₹4,000",
+      "SpiceJet and GoAir provide budget options under $4,000",
       "Weekend flights are 15% more expensive than weekdays",
       "Last-minute bookings (within 7 days) cost 40% more",
       "Business travelers prefer early morning departures"
@@ -403,7 +437,7 @@ const generateRouteInsights = (flights: FlightResult[], searchRequest?: SearchRe
     ],
     "BOM-BLR": [
       "Shortest domestic route with 1h 45m flight time",
-      "Budget airlines dominate with prices starting at ₹3,500",
+      "Budget airlines dominate with prices starting at $3,500",
       "Multiple flights throughout the day",
       "High frequency route - flights every 30 minutes",
       "Startup hub connection - popular with tech travelers"
@@ -634,4 +668,96 @@ export const applyFilters = (flights: FlightResult[], filters: FilterSuggestion[
       }
     });
   });
+}; 
+
+// Traditional Search API function
+export const searchTraditionalFlights = async (searchRequest: TraditionalSearchRequest): Promise<TraditionalFlightResult[]> => {
+  try {
+    const response = await fetch('http://localhost:5566/flights/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(searchRequest),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching traditional flight results:', error);
+    // Return mock data as fallback
+    return generateMockTraditionalResults(searchRequest);
+  }
+};
+
+// Helper function to convert search request to traditional API format
+export const convertSearchRequestToTraditional = (searchRequest: SearchRequest): TraditionalSearchRequest => {
+  const departure = searchRequest.from?.code || 'DEL';
+  const arrival = searchRequest.to?.code || 'BOM';
+  // Convert date format from YYYY-MM-DD to YYYYMMDD
+  const startDate = searchRequest.departDate ? 
+    searchRequest.departDate.replace(/-/g, '') : 
+    new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const endDate = searchRequest.returnDate ? 
+    searchRequest.returnDate.replace(/-/g, '') : 
+    undefined;
+
+  return {
+    departure,
+    arrival,
+    startDate,
+    endDate,
+  };
+};
+
+// Mock data generator for traditional results (fallback)
+const generateMockTraditionalResults = (searchRequest: TraditionalSearchRequest): TraditionalFlightResult[] => {
+  const airlines = [
+    { code: 'AF', carrier: 'Air France' },
+    { code: 'EK', carrier: 'Emirates' },
+    { code: 'QR', carrier: 'Qatar Airways' },
+    { code: 'EY', carrier: 'Etihad Airways' },
+    { code: 'TK', carrier: 'Turkish Airlines' },
+    { code: 'SV', carrier: 'Saudia' },
+    { code: 'XY', carrier: 'flynas' },
+    { code: 'WY', carrier: 'Oman Air' },
+  ];
+
+  return airlines.map((airline, index) => ({
+    airlineCode: airline.code,
+    carrier: airline.carrier,
+    outboundSegments: {
+      flightDuration: 2.5 + (index * 0.5),
+      legs: [
+        {
+          arr: `2025-7-17T${10 + index}:30`,
+          arrAirport: searchRequest.arrival,
+          dep: `20250717T${8 + index}:00`,
+          depAirport: searchRequest.departure,
+          flightNum: `${airline.code}${1000 + index}`,
+        }
+      ],
+      stops: index % 2 === 0 ? 0 : 1,
+    },
+    inboundSegments: searchRequest.endDate ? {
+      flightDuration: 2.5 + (index * 0.3),
+      legs: [
+        {
+          arr: `2025-8-08T${12 + index}:30`,
+          arrAirport: searchRequest.departure,
+          dep: `2025-8-08T${10 + index}:00`,
+          depAirport: searchRequest.arrival,
+          flightNum: `${airline.code}${2000 + index}`,
+        }
+      ],
+      stops: index % 3 === 0 ? 0 : 1
+    } : undefined,
+    metaScore: 0.5 + (index * 0.1),
+    totalPrice: 20 + (index * 50),
+    tripType: searchRequest.endDate ? 'roundTrip' : 'oneWay',
+  }));
 }; 

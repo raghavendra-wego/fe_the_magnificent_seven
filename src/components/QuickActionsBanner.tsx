@@ -137,7 +137,7 @@ const QuickActionsBanner = ({
               <div className="flex items-center space-x-1">
                 <TrendingUp className="w-3 h-3 text-green-600" />
                 <span className="text-gray-700">
-                  Save ₹{Math.round(priceDifference / 1000)}k ({Math.round(savingsPercentage)}%)
+                  Save ${Math.round(priceDifference / 1000)}k ({Math.round(savingsPercentage)}%)
                 </span>
               </div>
             </div>
@@ -244,7 +244,7 @@ const QuickActionsBanner = ({
             <div className="flex items-center space-x-2">
               <TrendingUp className="w-4 h-4 text-green-600" />
               <span className="text-gray-700">
-                Save up to ₹{Math.round(priceDifference / 1000)}k ({Math.round(savingsPercentage)}% off average)
+                Save up to ${Math.round(priceDifference / 1000)}k ({Math.round(savingsPercentage)}% off average)
               </span>
             </div>
             <div className="flex items-center space-x-1 text-xs text-gray-500">

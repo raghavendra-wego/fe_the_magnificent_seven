@@ -182,9 +182,9 @@ const PersonalizedRecommendations = ({ flights, onFlightSelect, compact = false 
                 size="sm"
                 variant={selectedCategory === category.id ? "default" : "outline"}
                 onClick={() => setSelectedCategory(category.id as any)}
-                className="text-xs px-2 py-1 h-6"
+                className="text-xs px-1 py-1 h-6"
               >
-                <category.icon className="w-2.5 h-2.5 mr-1" />
+                <category.icon className="w-2.5 h-2.5" />
                 {category.label}
               </Button>
             ))}
@@ -224,7 +224,7 @@ const PersonalizedRecommendations = ({ flights, onFlightSelect, compact = false 
               {/* Price */}
               <div className="text-right">
                 <div className="text-lg font-bold text-green-600">
-                  ₹{(recommendation.flight?.price || 0).toLocaleString()}
+                  ${(recommendation.flight?.price || 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500">
                   {(recommendation.flight?.stops || 0) === 0 ? 'Direct' : `${recommendation.flight?.stops || 0} stop`}
@@ -342,7 +342,7 @@ const PersonalizedRecommendations = ({ flights, onFlightSelect, compact = false 
             {/* Price */}
             <div className="text-right">
               <div className="text-2xl font-bold text-green-600">
-                ₹{(recommendation.flight?.price || 0).toLocaleString()}
+                ${(recommendation.flight?.price || 0).toLocaleString()}
               </div>
               <div className="text-xs text-gray-500">
                 {(recommendation.flight?.stops || 0) === 0 ? 'Direct' : `${recommendation.flight?.stops || 0} stop`}

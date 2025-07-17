@@ -164,7 +164,7 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest }: Sm
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white p-3 rounded-lg border">
                   <div className="text-2xl font-bold text-green-600">
-                    ₹{summary.priceAnalysis.cheapestPrice.toLocaleString()}
+                    ${summary.priceAnalysis.cheapestPrice.toLocaleString()}
                   </div>
                   <div className="text-xs text-gray-500">Lowest Price</div>
                 </div>
@@ -192,13 +192,13 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest }: Sm
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Price Range:</span>
                   <span className="font-medium text-gray-900">
-                    ₹{summary.priceAnalysis.priceRange}
+                    ${summary.priceAnalysis.priceRange}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
                   <span className="text-gray-600">Average Price:</span>
                   <span className="font-medium text-gray-900">
-                    ₹{summary.priceAnalysis.averagePrice.toLocaleString()}
+                    ${summary.priceAnalysis.averagePrice.toLocaleString()}
                   </span>
                 </div>
               </div>
