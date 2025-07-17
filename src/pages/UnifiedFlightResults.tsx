@@ -37,7 +37,7 @@ import {
   Target,
   Lightbulb
 } from "lucide-react";
-import { generateFlightResults, searchTraditionalFlights, convertSearchRequestToTraditional, TraditionalFlightResult } from "@/services/flightSummaryService";
+import { generateFlightResults, searchTraditionalFlightsWithSummary, convertSearchRequestToTraditional, TraditionalFlightResult } from "@/services/flightSummaryService";
 import SmartSummaryBanner from "@/components/SmartSummaryBanner";
 import PersonalizedFilterSuggestions from "@/components/PersonalizedFilterSuggestions";
 import QuickActionsBanner from "@/components/QuickActionsBanner";
@@ -45,7 +45,7 @@ import SocialProofBanner from "@/components/SocialProofBanner";
 import PersonalizedRecommendations from "@/components/PersonalizedRecommendations";
 import BookingProgressTracker from "@/components/BookingProgressTracker";
 import ExitIntentModal from "@/components/ExitIntentModal";
-import LiveActivityDeals from "@/components/LiveActivityDeals";
+
 
 const UnifiedFlightResults = () => {
   const navigate = useNavigate();
@@ -80,6 +80,9 @@ const UnifiedFlightResults = () => {
   const [conversation, setConversation] = useState([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [isAskingQuestion, setIsAskingQuestion] = useState(false);
+  const [apiSummarize, setApiSummarize] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState('price'); // 'price', 'duration', 'departure', 'airline'
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc', 'desc'
 
   // Check localStorage for exit intent dismissal
   useEffect(() => {
@@ -173,13 +176,18 @@ const UnifiedFlightResults = () => {
         const fetchFlights = async () => {
           try {
             const traditionalReq = convertSearchRequestToTraditional(searchRequest);
-            const apiResults: TraditionalFlightResult[] = await searchTraditionalFlights(traditionalReq);
+            
+            // Fetch both flight results and summary data in a single API call
+            const { flights: apiResults, summary: summaryData } = await searchTraditionalFlightsWithSummary(traditionalReq);
+            
             console.log("FlightResults: API flights:", apiResults);
+            console.log("FlightResults: API summary:", summaryData);
             
             // Convert to UI format
             const uiFlights = apiResults.map(mapTraditionalToUIFlight);
             setFlightResults(uiFlights);
-            setFilteredResults(uiFlights);
+            setFilteredResults(sortFlights(uiFlights));
+            setApiSummarize(summaryData);
             setIsLoading(false);
             
             // Generate initial AI conversation based on search
@@ -198,7 +206,7 @@ const UnifiedFlightResults = () => {
             const flights = generateFlightResults(searchRequest);
             console.log("FlightResults: Generated flights:", flights);
             setFlightResults(flights);
-            setFilteredResults(flights);
+            setFilteredResults(sortFlights(flights));
             setIsLoading(false);
             // Generate initial AI conversation based on search
             const initialConversation = generateInitialConversation(searchRequest, flights);
@@ -235,7 +243,7 @@ const UnifiedFlightResults = () => {
               }
             ];
             setFlightResults(mockFlights);
-            setFilteredResults(mockFlights);
+            setFilteredResults(sortFlights(mockFlights));
             setIsLoading(false);
             const initialConversation = generateInitialConversation(searchRequest, mockFlights);
             setConversation([initialConversation]);
@@ -285,11 +293,18 @@ const UnifiedFlightResults = () => {
         }
       ];
       setFlightResults(mockFlights);
-      setFilteredResults(mockFlights);
+      setFilteredResults(sortFlights(mockFlights));
       const initialConversation = generateInitialConversation(defaultSearchRequest, mockFlights);
       setConversation([initialConversation]);
     }
   }, [searchRequest]);
+
+  // Re-sort when sort criteria changes
+  useEffect(() => {
+    if (flightResults.length > 0) {
+      setFilteredResults(sortFlights(applyFilters(flightResults, selectedFilters)));
+    }
+  }, [sortBy, sortOrder, flightResults, selectedFilters]);
 
   // Helper to format date
   function formatDate(date) {
@@ -419,12 +434,12 @@ const UnifiedFlightResults = () => {
       // Remove filter
       const newFilters = selectedFilters.filter(f => f.id !== filter.id);
       setSelectedFilters(newFilters);
-      setFilteredResults(applyFilters(flightResults, newFilters));
+      setFilteredResults(sortFlights(applyFilters(flightResults, newFilters)));
     } else {
       // Add filter
       const newFilters = [...selectedFilters, filter];
       setSelectedFilters(newFilters);
-      setFilteredResults(applyFilters(flightResults, newFilters));
+      setFilteredResults(sortFlights(applyFilters(flightResults, newFilters)));
     }
   };
 
@@ -512,6 +527,42 @@ const UnifiedFlightResults = () => {
     });
     
     return filtered;
+  };
+
+  // Sort flights based on current sort criteria
+  const sortFlights = (flights) => {
+    return [...flights].sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'price':
+          aValue = a.price;
+          bValue = b.price;
+          break;
+        case 'duration':
+          // Convert duration string to minutes for comparison
+          aValue = parseInt(a.duration.split('h')[0]) * 60 + parseInt(a.duration.split(' ')[1].split('m')[0]);
+          bValue = parseInt(b.duration.split('h')[0]) * 60 + parseInt(b.duration.split(' ')[1].split('m')[0]);
+          break;
+        case 'departure':
+          aValue = new Date(a.departureTime).getTime();
+          bValue = new Date(b.departureTime).getTime();
+          break;
+        case 'airline':
+          aValue = a.airline.toLowerCase();
+          bValue = b.airline.toLowerCase();
+          break;
+        default:
+          aValue = a.price;
+          bValue = b.price;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
   };
 
   const currentAnswer = conversation[conversation.length - 1]?.answer;
@@ -624,17 +675,7 @@ const UnifiedFlightResults = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Top Banners - Full Width */}
-        <div className="mb-6">
-        
 
-          {/* AI-Powered Smart Summary Banner */}
-          <SmartSummaryBanner
-            flightResults={flightResults}
-            onInsightClick={handleInsightClick}
-            searchRequest={searchRequest}
-          />
-        </div>
 
         {/* Three Column Layout */}
         <div className="flex gap-6">
@@ -769,6 +810,7 @@ const UnifiedFlightResults = () => {
                 <h2 className="text-2xl font-bold text-gray-900">
                   {filteredResults.length} Flights Found
                 </h2>
+                
                 {selectedFilters.length > 0 && (
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-500">with filters:</span>
@@ -781,14 +823,33 @@ const UnifiedFlightResults = () => {
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  More Filters
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Menu className="w-4 h-4 mr-2" />
-                  Sort
-                </Button>
+              
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      setSortBy(e.target.value);
+                      setFilteredResults(sortFlights(applyFilters(flightResults, selectedFilters)));
+                    }}
+                    className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="price">Price</option>
+                    <option value="duration">Duration</option>
+                    <option value="departure">Departure Time</option>
+                    <option value="airline">Airline</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      setFilteredResults(sortFlights(applyFilters(flightResults, selectedFilters)));
+                    }}
+                    className="px-2"
+                  >
+                    {sortOrder === 'asc' ? '↑' : '↓'}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -1007,7 +1068,7 @@ const UnifiedFlightResults = () => {
                     variant="outline"
                     onClick={() => {
                       setSelectedFilters([]);
-                      setFilteredResults(flightResults);
+                      setFilteredResults(sortFlights(flightResults));
                     }}
                   >
                     Clear All Filters
@@ -1019,10 +1080,15 @@ const UnifiedFlightResults = () => {
 
           {/* Right Sidebar - AI Features */}
           <div className="w-80 space-y-4">
-         
-
-           right side bar
-             
+            {/* AI-Powered Smart Summary Banner */}
+            <SmartSummaryBanner
+              flightResults={flightResults}
+              onInsightClick={handleInsightClick}
+              searchRequest={searchRequest}
+              apiSummarize={apiSummarize}
+            />
+            
+           
           </div>
         </div>
       </div>
@@ -1037,12 +1103,7 @@ const UnifiedFlightResults = () => {
         averagePrice={averagePrice}
       />
 
-      {/* Live Activity & Deals - Sticky Bottom */}
-      <LiveActivityDeals
-        totalFlights={flightResults.length}
-        cheapestPrice={cheapestPrice}
-        averagePrice={averagePrice}
-      />
+
     </div>
   );
 };

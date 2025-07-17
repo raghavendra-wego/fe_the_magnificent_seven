@@ -34,6 +34,11 @@ export interface TraditionalFlightResult {
   tripType: string;
 }
 
+export interface TraditionalSearchResponse {
+  data: TraditionalFlightResult[];
+  summarize: string[];
+}
+
 // Legacy interfaces for backward compatibility
 export interface FlightResult {
   price: number;
@@ -673,7 +678,7 @@ export const applyFilters = (flights: FlightResult[], filters: FilterSuggestion[
 // Traditional Search API function
 export const searchTraditionalFlights = async (searchRequest: TraditionalSearchRequest): Promise<TraditionalFlightResult[]> => {
   try {
-    const response = await fetch('http://localhost:5566/flights/search', {
+    const response = await fetch('http://localhost:5566/v1/flights/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -685,12 +690,72 @@ export const searchTraditionalFlights = async (searchRequest: TraditionalSearchR
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data;
+    const responseData = await response.json();
+    
+    // Handle the new API response structure with data and summarize fields
+    if (responseData.data && Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    
+    // Fallback for direct array response (backward compatibility)
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    
+    throw new Error('Invalid response format from API');
   } catch (error) {
     console.error('Error fetching traditional flight results:', error);
     // Return mock data as fallback
     return generateMockTraditionalResults(searchRequest);
+  }
+};
+
+// Combined API function that returns both flight data and summary
+export const searchTraditionalFlightsWithSummary = async (searchRequest: TraditionalSearchRequest): Promise<{ flights: TraditionalFlightResult[], summary: string[] }> => {
+  try {
+    const response = await fetch('http://localhost:5566/v1/flights/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(searchRequest),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    
+    // Handle the new API response structure with data and summarize fields
+    if (responseData.data && Array.isArray(responseData.data)) {
+      return {
+        flights: responseData.data,
+        summary: responseData.summarize || []
+      };
+    }
+    
+    // Fallback for direct array response (backward compatibility)
+    if (Array.isArray(responseData)) {
+      return {
+        flights: responseData,
+        summary: []
+      };
+    }
+    
+    throw new Error('Invalid response format from API');
+  } catch (error) {
+    console.error('Error fetching traditional flight results:', error);
+    // Return mock data as fallback
+    const mockFlights = generateMockTraditionalResults(searchRequest);
+    return {
+      flights: mockFlights,
+      summary: [
+        `Found ${mockFlights.length} flight options starting from $${Math.min(...mockFlights.map(f => f.totalPrice)).toLocaleString()}`,
+        `The cheapest option is with ${mockFlights[0]?.carrier || 'Unknown'} at $${Math.min(...mockFlights.map(f => f.totalPrice)).toLocaleString()}`,
+        `${mockFlights.filter(f => f.outboundSegments.stops === 0).length} direct flights available`
+      ]
+    };
   }
 };
 
@@ -714,6 +779,8 @@ export const convertSearchRequestToTraditional = (searchRequest: SearchRequest):
   };
 };
 
+
+
 // Mock data generator for traditional results (fallback)
 const generateMockTraditionalResults = (searchRequest: TraditionalSearchRequest): TraditionalFlightResult[] => {
   const airlines = [
@@ -723,41 +790,74 @@ const generateMockTraditionalResults = (searchRequest: TraditionalSearchRequest)
     { code: 'EY', carrier: 'Etihad Airways' },
     { code: 'TK', carrier: 'Turkish Airlines' },
     { code: 'SV', carrier: 'Saudia' },
-    { code: 'XY', carrier: 'flynas' },
-    { code: 'WY', carrier: 'Oman Air' },
+    { code: 'LX', carrier: 'Swiss International' },
+    { code: 'LH', carrier: 'Lufthansa' },
+    { code: 'BA', carrier: 'British Airways' },
+    { code: 'KL', carrier: 'KLM' },
   ];
 
-  return airlines.map((airline, index) => ({
-    airlineCode: airline.code,
-    carrier: airline.carrier,
-    outboundSegments: {
-      flightDuration: 2.5 + (index * 0.5),
-      legs: [
-        {
-          arr: `2025-7-17T${10 + index}:30`,
-          arrAirport: searchRequest.arrival,
-          dep: `20250717T${8 + index}:00`,
-          depAirport: searchRequest.departure,
-          flightNum: `${airline.code}${1000 + index}`,
-        }
-      ],
-      stops: index % 2 === 0 ? 0 : 1,
-    },
-    inboundSegments: searchRequest.endDate ? {
-      flightDuration: 2.5 + (index * 0.3),
-      legs: [
-        {
-          arr: `2025-8-08T${12 + index}:30`,
-          arrAirport: searchRequest.departure,
-          dep: `2025-8-08T${10 + index}:00`,
-          depAirport: searchRequest.arrival,
-          flightNum: `${airline.code}${2000 + index}`,
-        }
-      ],
-      stops: index % 3 === 0 ? 0 : 1
-    } : undefined,
-    metaScore: 0.5 + (index * 0.1),
-    totalPrice: 20 + (index * 50),
-    tripType: searchRequest.endDate ? 'roundTrip' : 'oneWay',
-  }));
+  // Generate departure date from startDate
+  const departDate = new Date(
+    parseInt(searchRequest.startDate.substring(0, 4)),
+    parseInt(searchRequest.startDate.substring(4, 6)) - 1,
+    parseInt(searchRequest.startDate.substring(6, 8))
+  );
+
+  // Generate return date if provided
+  const returnDate = searchRequest.endDate ? new Date(
+    parseInt(searchRequest.endDate.substring(0, 4)),
+    parseInt(searchRequest.endDate.substring(4, 6)) - 1,
+    parseInt(searchRequest.endDate.substring(6, 8))
+  ) : null;
+
+  return airlines.map((airline, index) => {
+    // Generate realistic departure times
+    const departHour = 6 + (index * 2) % 18;
+    const departTime = new Date(departDate);
+    departTime.setHours(departHour, (index * 15) % 60, 0, 0);
+
+    // Generate arrival time (departure + duration)
+    const duration = 2.5 + (index * 0.5);
+    const arrivalTime = new Date(departTime);
+    arrivalTime.setHours(arrivalTime.getHours() + Math.floor(duration), 
+                        arrivalTime.getMinutes() + Math.round((duration % 1) * 60));
+
+    // Check if arrival is next day
+    const arrivalNextDay = arrivalTime.getDate() !== departTime.getDate();
+
+    return {
+      airlineCode: airline.code,
+      carrier: airline.carrier,
+      outboundSegments: {
+        flightDuration: duration,
+        legs: [
+          {
+            arr: arrivalTime.toISOString().slice(0, 16).replace('T', 'T'),
+            arrAirport: searchRequest.arrival,
+            arrivalNextDay,
+            dep: departTime.toISOString().slice(0, 16).replace('T', 'T'),
+            depAirport: searchRequest.departure,
+            flightNum: `${airline.code}${1000 + index}`,
+          }
+        ],
+        stops: index % 2 === 0 ? 0 : 1,
+      },
+      inboundSegments: returnDate ? {
+        flightDuration: 2.5 + (index * 0.3),
+        legs: [
+          {
+            arr: returnDate.toISOString().slice(0, 16).replace('T', 'T'),
+            arrAirport: searchRequest.departure,
+            dep: new Date(returnDate.getTime() - (2.5 + index * 0.3) * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', 'T'),
+            depAirport: searchRequest.arrival,
+            flightNum: `${airline.code}${2000 + index}`,
+          }
+        ],
+        stops: index % 3 === 0 ? 0 : 1
+      } : undefined,
+      metaScore: 0.6 + (index * 0.05),
+      totalPrice: 1500 + (index * 200),
+      tripType: searchRequest.endDate ? 'roundTrip' : 'oneWay',
+    };
+  });
 }; 
