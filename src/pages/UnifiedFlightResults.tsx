@@ -15,6 +15,7 @@ import {
   Plane, 
   Clock,
   ArrowRightLeft,
+  ArrowLeftRight,
   Star,
   Filter,
   Menu,
@@ -37,7 +38,7 @@ import {
   Target,
   Lightbulb
 } from "lucide-react";
-import { generateFlightResults, searchTraditionalFlightsWithSummary, convertSearchRequestToTraditional, TraditionalFlightResult } from "@/services/flightSummaryService";
+import { generateFlightResults, searchTraditionalFlightsWithSummary, searchAIFlights, convertSearchRequestToTraditional, TraditionalFlightResult } from "@/services/flightSummaryService";
 import SmartSummaryBanner from "@/components/SmartSummaryBanner";
 import PersonalizedFilterSuggestions from "@/components/PersonalizedFilterSuggestions";
 import QuickActionsBanner from "@/components/QuickActionsBanner";
@@ -199,6 +200,63 @@ const UnifiedFlightResults = () => {
           }
         };
         fetchFlights();
+      } else if (searchType === 'ai-search') {
+        const fetchAIFlights = async () => {
+          try {
+            // Call AI search API with the message
+            const aiResponse = await searchAIFlights({ message: searchRequest.message });
+            console.log("FlightResults: AI response:", aiResponse);
+            
+            // Convert to UI format
+            const uiFlights = aiResponse.data.map(mapTraditionalToUIFlight);
+            setFlightResults(uiFlights);
+            setFilteredResults(sortFlights(uiFlights));
+            setApiSummarize(aiResponse.summarize);
+            setIsLoading(false);
+            
+            // Generate initial AI conversation based on search
+            const initialConversation = generateInitialConversation(searchRequest, uiFlights);
+            setConversation([initialConversation]);
+          } catch (error) {
+            console.error("FlightResults: Error fetching AI flights:", error);
+            setIsLoading(false);
+            // Fallback to mock data if generation fails
+            const mockFlights = [
+              {
+                airline: "Emirates",
+                aircraft: "Boeing 777",
+                departureTime: "2024-07-16T10:00:00Z",
+                arrivalTime: "2024-07-16T12:30:00Z",
+                departureAirport: "DXB",
+                arrivalAirport: "CAI",
+                duration: "2h 30m",
+                stops: 0,
+                price: 2500,
+                baggage: "20kg",
+                meal: "Included"
+              },
+              {
+                airline: "EgyptAir",
+                aircraft: "Airbus A320",
+                departureTime: "2024-07-16T14:00:00Z",
+                arrivalTime: "2024-07-16T16:45:00Z",
+                departureAirport: "DXB",
+                arrivalAirport: "CAI",
+                duration: "2h 45m",
+                stops: 0,
+                price: 1800,
+                baggage: "15kg",
+                meal: "Not included"
+              }
+            ];
+            setFlightResults(mockFlights);
+            setFilteredResults(sortFlights(mockFlights));
+            setIsLoading(false);
+            const initialConversation = generateInitialConversation(searchRequest, mockFlights);
+            setConversation([initialConversation]);
+          }
+        };
+        fetchAIFlights();
       } else {
         // Simulate API call delay for AI/other types
         setTimeout(() => {
@@ -297,7 +355,7 @@ const UnifiedFlightResults = () => {
       const initialConversation = generateInitialConversation(defaultSearchRequest, mockFlights);
       setConversation([initialConversation]);
     }
-  }, [searchRequest]);
+  }, [searchRequest, searchType]);
 
   // Re-sort when sort criteria changes
   useEffect(() => {
@@ -1088,7 +1146,26 @@ const UnifiedFlightResults = () => {
               apiSummarize={apiSummarize}
             />
             
-           
+            {/* AI Search Query Display */}
+            {searchType === 'ai-search' && searchRequest?.message && (
+              <Card className="border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        AI Search Query
+                      </h3>
+                      <p className="text-xs text-gray-600">
+                        "{searchRequest.message}"
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

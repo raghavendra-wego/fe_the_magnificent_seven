@@ -779,6 +779,98 @@ export const convertSearchRequestToTraditional = (searchRequest: SearchRequest):
   };
 };
 
+// AI Search API interfaces
+export interface AISearchRequest {
+  message: string;
+}
+
+export interface AISearchResponse {
+  data: TraditionalFlightResult[];
+  summarize: string[];
+  extractedParams?: {
+    startDate: string;
+    endDate?: string;
+    tripType: string;
+    maxPrice?: number;
+    maxStops?: number;
+    possibleCities?: Array<{
+      departure: string;
+      arrival: string;
+    }>;
+  };
+  originalQuery: string;
+  possibleCities?: Array<{
+    departure: string;
+    arrival: string;
+  }>;
+}
+
+// AI Search API function
+export const searchAIFlights = async (searchRequest: AISearchRequest): Promise<AISearchResponse> => {
+  try {
+    const response = await fetch('http://localhost:5566/v1/flights/ai-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(searchRequest),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    
+    // Handle the AI search response structure
+    if (responseData.data && Array.isArray(responseData.data)) {
+      return {
+        data: responseData.data,
+        summarize: responseData.summarize || [],
+        extractedParams: responseData.extractedParams,
+        originalQuery: responseData.originalQuery,
+        possibleCities: responseData.possibleCities
+      };
+    }
+    
+    throw new Error('Invalid response format from AI search API');
+  } catch (error) {
+    console.error('Error fetching AI flight results:', error);
+    // Return mock data as fallback
+    const mockFlights = generateMockTraditionalResults({
+      departure: 'DXB',
+      arrival: 'JED',
+      startDate: '20250718',
+      endDate: '20250808'
+    });
+    return {
+      data: mockFlights,
+      summarize: [
+        "Found 20 flight options starting from $1,925",
+        "The cheapest option is with Etihad Airways at $1,925",
+        "7 direct flights available"
+      ],
+      extractedParams: {
+        startDate: '20250718',
+        endDate: '20250808',
+        tripType: 'roundTrip',
+        maxPrice: 400,
+        maxStops: 0,
+        possibleCities: [
+          { departure: 'DXB', arrival: 'JED' },
+          { departure: 'BOM', arrival: 'SIN' },
+          { departure: 'LHR', arrival: 'CDG' }
+        ]
+      },
+      originalQuery: searchRequest.message,
+      possibleCities: [
+        { departure: 'DXB', arrival: 'JED' },
+        { departure: 'BOM', arrival: 'SIN' },
+        { departure: 'LHR', arrival: 'CDG' }
+      ]
+    };
+  }
+};
 
 
 // Mock data generator for traditional results (fallback)

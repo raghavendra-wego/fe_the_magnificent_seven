@@ -48,22 +48,17 @@ const FlightBooking = () => {
     
     console.log("Navigating to flight-results with state:", { 
       promptQuery: promptSearch,
-      searchType: 'ai-prompt' 
+      searchType: 'ai-search' 
     });
     
-    // Navigate to unified results page with the search query
+    // Navigate to unified results page with the AI search query
     navigate('/flight-results', { 
       state: { 
         searchRequest: {
-          promptQuery: promptSearch,
-          from: { city: "Dubai", country: "United Arab Emirates", code: "DXB" },
-          to: { city: "Cairo", country: "Egypt", code: "CAI" },
-          departDate: "2024-07-16",
-          tripType: "one-way",
-          passengers: { adults: 1, children: 0, infants: 0 },
-          travelClass: "economy"
+          message: promptSearch,
+          searchType: 'ai-search'
         },
-        searchType: 'ai-prompt' 
+        searchType: 'ai-search' 
       } 
     });
   };

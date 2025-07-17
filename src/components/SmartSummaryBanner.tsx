@@ -155,15 +155,7 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest, apiS
             </div>
           </div>
           <div className="flex items-center space-x-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="text-green-600 hover:text-green-700 p-1 h-6 w-6"
-            >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
+            
             <Button
               variant="ghost"
               size="sm"
@@ -176,14 +168,14 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest, apiS
         </div>
 
         {/* Collapsible Content */}
-        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? ' opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="space-y-4">
             {/* Insights */}
             <div>
               <h4 className="font-medium text-gray-900 mb-2 flex items-center text-sm">
                 <Target className="w-3 h-3 mr-1 text-green-600" />
                 Key Insights  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
-              {apiSummarize && apiSummarize.length > 0 ? 'API Powered' : 'AI Powered'}
+              AI Powered
               </Badge>
              
               </h4>
@@ -257,16 +249,7 @@ const SmartSummaryBanner = ({ flightResults, onInsightClick, searchRequest, apiS
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-green-100">
-            <div className="flex items-center space-x-1 text-xs text-gray-600">
-              <Users className="w-3 h-3" />
-              <span>{flightResults.length} options</span>
-            </div>
-            <div className="flex space-x-1">
-             
-            </div>
-          </div>
+         
         </div>
 
         {/* Collapsed State Indicator */}
