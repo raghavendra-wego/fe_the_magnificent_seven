@@ -118,7 +118,7 @@ const FlightBooking = () => {
               <span className="text-xl font-bold text-wego-text-dark">wego</span>
             </button>
             <nav className="hidden md:flex space-x-6">
-              <a href="#" className="text-wego-text-light hover:text-wego-text-dark">WegoPro Business Travel</a>
+              <a href="#" className="text-wego-text-light hover:text-wego-text-dark">The Magnificent Seven Travel</a>
             </nav>
           </div>
           <div className="flex items-center space-x-4">
