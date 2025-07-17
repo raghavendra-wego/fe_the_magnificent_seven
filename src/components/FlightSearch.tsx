@@ -214,6 +214,7 @@ const FlightSearch = () => {
                   setDepartPopoverOpen(false);
                 }}
                 initialFocus
+                disabled={{ before: new Date() }}
                 className="pointer-events-auto"
               />
             </PopoverContent>

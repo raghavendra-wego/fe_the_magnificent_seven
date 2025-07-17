@@ -593,8 +593,15 @@ const UnifiedFlightResults = () => {
     const extracted = aiSearchData.extractedParams;
     console.log("AI Search extracted params:", extracted);
     
-    tripType = extracted.tripType === 'oneWay' ? 'one-way' : 
-                extracted.tripType === 'roundTrip' ? 'round-trip' : tripType;
+    // Determine trip type based on extracted params and endDate presence
+    if (extracted.tripType === 'oneWay') {
+      tripType = 'one-way';
+    } else if (extracted.tripType === 'roundTrip') {
+      tripType = 'round-trip';
+    } else if (extracted.endDate && extracted.endDate.trim() !== '') {
+      // If endDate is available but tripType is not specified, treat as round-trip
+      tripType = 'round-trip';
+    }
     
     // Convert date format from YYYYMMDD to YYYY-MM-DD for display
     if (extracted.startDate) {
@@ -602,15 +609,15 @@ const UnifiedFlightResults = () => {
       departDate = `${startDateStr.slice(0, 4)}-${startDateStr.slice(4, 6)}-${startDateStr.slice(6, 8)}`;
       console.log("Converted start date:", { original: extracted.startDate, converted: departDate });
     }
-    if (extracted.endDate) {
+    if (extracted.endDate && extracted.endDate.trim() !== '') {
       const endDateStr = extracted.endDate;
       returnDate = `${endDateStr.slice(0, 4)}-${endDateStr.slice(4, 6)}-${endDateStr.slice(6, 8)}`;
       console.log("Converted end date:", { original: extracted.endDate, converted: returnDate });
     }
   }
   
-  // Also check flight results for trip type if available
-  if (flightResults.length > 0) {
+  // Also check flight results for trip type if available (but prioritize extracted params for AI search)
+  if (flightResults.length > 0 && searchType !== 'ai-search') {
     const firstFlight = flightResults[0];
     if (firstFlight.tripType) {
       const originalTripType = tripType;
@@ -718,7 +725,7 @@ const UnifiedFlightResults = () => {
               <span className="text-sm">Depart</span>
               <span className="font-medium">{departLabel}</span>
             </div>
-            {tripType === 'round-trip' && (
+            {(tripType === 'round-trip' || (searchType === 'ai-search' && aiSearchData.extractedParams?.endDate && aiSearchData.extractedParams.endDate.trim() !== '' && returnLabel !== null)) && (
               <div className="flex items-center space-x-2">
                 <span className="text-sm">Return</span>
                 <span className="font-medium">{returnLabel}</span>
