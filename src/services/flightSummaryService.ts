@@ -93,214 +93,7 @@ export interface SearchRequest {
   tripType?: string;
 }
 
-// Generate realistic flight data based on search parameters
-export const generateFlightResults = (searchRequest: SearchRequest): FlightResult[] => {
-  const { from, to, departDate, returnDate, passengers, travelClass, tripType } = searchRequest;
-  
-  // Base flight data with realistic variations
-  const baseFlights = [
-    {
-      airline: "Indigo",
-      basePrice: 4800,
-      aircraft: "A320",
-      baggage: "20kg",
-      meal: "Included"
-    },
-    {
-      airline: "Air India",
-      basePrice: 5200,
-      aircraft: "A321",
-      baggage: "25kg",
-      meal: "Included"
-    },
-    {
-      airline: "SpiceJet",
-      basePrice: 3800,
-      aircraft: "B737",
-      baggage: "15kg",
-      meal: "Not included"
-    },
-    {
-      airline: "Vistara",
-      basePrice: 6500,
-      aircraft: "A320",
-      baggage: "25kg",
-      meal: "Included"
-    },
-    {
-      airline: "GoAir",
-      basePrice: 3500,
-      aircraft: "A320",
-      baggage: "15kg",
-      meal: "Not included"
-    },
-    {
-      airline: "AirAsia",
-      basePrice: 4200,
-      aircraft: "A320",
-      baggage: "20kg",
-      meal: "Not included"
-    },
-    {
-      airline: "Emirates",
-      basePrice: 7200,
-      aircraft: "B777",
-      baggage: "30kg",
-      meal: "Included"
-    },
-    {
-      airline: "Qatar Airways",
-      basePrice: 6800,
-      aircraft: "A350",
-      baggage: "30kg",
-      meal: "Included"
-    },
-    {
-      airline: "Etihad",
-      basePrice: 6900,
-      aircraft: "A320",
-      baggage: "25kg",
-      meal: "Included"
-    },
-    {
-      airline: "Turkish Airlines",
-      basePrice: 6100,
-      aircraft: "B737",
-      baggage: "25kg",
-      meal: "Included"
-    }
-  ];
 
-  // Adjust prices based on route distance and demand
-  const routeMultiplier = getRouteMultiplier(from?.code, to?.code);
-  const dateMultiplier = getDateMultiplier(departDate);
-  const classMultiplier = getClassMultiplier(travelClass);
-  const passengerMultiplier = passengers?.adults ? passengers.adults : 1;
-
-  return baseFlights.map((flight, index) => {
-    const adjustedPrice = Math.round(
-      flight.basePrice * routeMultiplier * dateMultiplier * classMultiplier * passengerMultiplier
-    );
-    
-    // Generate realistic departure times
-    const departureHour = 6 + (index * 2) % 18; // Spread flights throughout the day
-    const departureDate = new Date(departDate || new Date());
-    departureDate.setHours(departureHour, (index * 15) % 60, 0, 0);
-    
-    // Calculate duration based on route
-    const duration = getRouteDuration(from?.code, to?.code);
-    
-    // Determine stops based on route and airline
-    const stops = getStopsForRoute(from?.code, to?.code, flight.airline);
-    
-    return {
-      price: adjustedPrice,
-      airline: flight.airline,
-      departureTime: departureDate.toISOString(),
-      duration,
-      stops,
-      baggage: flight.baggage,
-      meal: flight.meal,
-      aircraft: flight.aircraft,
-      departureAirport: from?.code || "DEL",
-      arrivalAirport: to?.code || "BOM"
-    };
-  });
-};
-
-// Helper functions for realistic data generation
-const getRouteMultiplier = (fromCode?: string, toCode?: string): number => {
-  const routes: Record<string, number> = {
-    "DEL-BOM": 1.0,    // Delhi to Mumbai
-    "BOM-DEL": 1.0,    // Mumbai to Delhi
-    "DEL-BLR": 1.2,    // Delhi to Bangalore
-    "BLR-DEL": 1.2,    // Bangalore to Delhi
-    "BOM-BLR": 0.9,    // Mumbai to Bangalore
-    "BLR-BOM": 0.9,    // Bangalore to Mumbai
-    "DEL-HYD": 1.1,    // Delhi to Hyderabad
-    "HYD-DEL": 1.1,    // Hyderabad to Delhi
-    "BOM-HYD": 0.8,    // Mumbai to Hyderabad
-    "HYD-BOM": 0.8,    // Hyderabad to Mumbai
-    "DEL-CCU": 1.3,    // Delhi to Kolkata
-    "CCU-DEL": 1.3,    // Kolkata to Delhi
-    "BOM-CCU": 1.4,    // Mumbai to Kolkata
-    "CCU-BOM": 1.4,    // Kolkata to Mumbai
-    "DEL-MAA": 1.5,    // Delhi to Chennai
-    "MAA-DEL": 1.5,    // Chennai to Delhi
-    "BOM-MAA": 1.1,    // Mumbai to Chennai
-    "MAA-BOM": 1.1,    // Chennai to Mumbai
-  };
-  
-  const routeKey = `${fromCode}-${toCode}`;
-  return routes[routeKey] || 1.0;
-};
-
-const getDateMultiplier = (departDate?: string): number => {
-  if (!departDate) return 1.0;
-  
-  const date = new Date(departDate);
-  const today = new Date();
-  const daysUntilDeparture = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Higher prices for closer dates, peak season, weekends
-  if (daysUntilDeparture <= 7) return 1.4; // Last minute
-  if (daysUntilDeparture <= 14) return 1.2; // Short notice
-  if (daysUntilDeparture <= 30) return 1.1; // Near term
-  if (daysUntilDeparture <= 90) return 1.0; // Normal
-  return 0.9; // Advance booking discount
-};
-
-const getClassMultiplier = (travelClass?: string): number => {
-  switch (travelClass) {
-    case 'economy': return 1.0;
-    case 'premium-economy': return 1.5;
-    case 'business': return 3.0;
-    case 'first': return 5.0;
-    default: return 1.0;
-  }
-};
-
-const getRouteDuration = (fromCode?: string, toCode?: string): string => {
-  const routes: Record<string, string> = {
-    "DEL-BOM": "2h 15m",
-    "BOM-DEL": "2h 15m",
-    "DEL-BLR": "2h 45m",
-    "BLR-DEL": "2h 45m",
-    "BOM-BLR": "1h 45m",
-    "BLR-BOM": "1h 45m",
-    "DEL-HYD": "2h 10m",
-    "HYD-DEL": "2h 10m",
-    "BOM-HYD": "1h 30m",
-    "HYD-BOM": "1h 30m",
-    "DEL-CCU": "2h 30m",
-    "CCU-DEL": "2h 30m",
-    "BOM-CCU": "2h 45m",
-    "CCU-BOM": "2h 45m",
-    "DEL-MAA": "3h 15m",
-    "MAA-DEL": "3h 15m",
-    "BOM-MAA": "2h 30m",
-    "MAA-BOM": "2h 30m",
-  };
-  
-  const routeKey = `${fromCode}-${toCode}`;
-  return routes[routeKey] || "2h 30m";
-};
-
-const getStopsForRoute = (fromCode: string, toCode: string, airline: string): number => {
-  // Premium airlines typically offer more direct flights
-  const premiumAirlines = ["Emirates", "Qatar Airways", "Etihad", "Vistara"];
-  const budgetAirlines = ["SpiceJet", "GoAir", "AirAsia"];
-  
-  if (premiumAirlines.includes(airline)) {
-    return Math.random() < 0.8 ? 0 : 1; // 80% direct for premium
-  }
-  
-  if (budgetAirlines.includes(airline)) {
-    return Math.random() < 0.6 ? 0 : 1; // 60% direct for budget
-  }
-  
-  return Math.random() < 0.7 ? 0 : 1; // 70% direct for others
-};
 
 // Generate realistic insights based on actual search parameters
 const generateRouteInsights = (flights: FlightResult[], searchRequest?: SearchRequest): string[] => {
@@ -705,8 +498,8 @@ export const searchTraditionalFlights = async (searchRequest: TraditionalSearchR
     throw new Error('Invalid response format from API');
   } catch (error) {
     console.error('Error fetching traditional flight results:', error);
-    // Return mock data as fallback
-    return generateMockTraditionalResults(searchRequest);
+    // Return empty array on error
+    return [];
   }
 };
 
@@ -746,15 +539,10 @@ export const searchTraditionalFlightsWithSummary = async (searchRequest: Traditi
     throw new Error('Invalid response format from API');
   } catch (error) {
     console.error('Error fetching traditional flight results:', error);
-    // Return mock data as fallback
-    const mockFlights = generateMockTraditionalResults(searchRequest);
+    // Return empty response on error
     return {
-      flights: mockFlights,
-      summary: [
-        `Found ${mockFlights.length} flight options starting from $${Math.min(...mockFlights.map(f => f.totalPrice)).toLocaleString()}`,
-        `The cheapest option is with ${mockFlights[0]?.carrier || 'Unknown'} at $${Math.min(...mockFlights.map(f => f.totalPrice)).toLocaleString()}`,
-        `${mockFlights.filter(f => f.outboundSegments.stops === 0).length} direct flights available`
-      ]
+      flights: [],
+      summary: []
     };
   }
 };
@@ -836,120 +624,14 @@ export const searchAIFlights = async (searchRequest: AISearchRequest): Promise<A
     throw new Error('Invalid response format from AI search API');
   } catch (error) {
     console.error('Error fetching AI flight results:', error);
-    // Return mock data as fallback
-    const mockFlights = generateMockTraditionalResults({
-      departure: 'DXB',
-      arrival: 'JED',
-      startDate: '20250718',
-      endDate: '20250808'
-    });
+    // Return empty response on error
     return {
-      data: mockFlights,
-      summarize: [
-        "Found 20 flight options starting from $1,925",
-        "The cheapest option is with Etihad Airways at $1,925",
-        "7 direct flights available"
-      ],
-      extractedParams: {
-        startDate: '20250718',
-        endDate: '20250808',
-        tripType: 'roundTrip',
-        maxPrice: 400,
-        maxStops: 0,
-        possibleCities: [
-          { departure: 'DXB', arrival: 'JED' },
-          { departure: 'BOM', arrival: 'SIN' },
-          { departure: 'LHR', arrival: 'CDG' }
-        ]
-      },
-      originalQuery: searchRequest.message,
-      possibleCities: [
-        { departure: 'DXB', arrival: 'JED' },
-        { departure: 'BOM', arrival: 'SIN' },
-        { departure: 'LHR', arrival: 'CDG' }
-      ]
+      data: [],
+      summarize: [],
+      originalQuery: searchRequest.message
     };
   }
 };
 
 
-// Mock data generator for traditional results (fallback)
-const generateMockTraditionalResults = (searchRequest: TraditionalSearchRequest): TraditionalFlightResult[] => {
-  const airlines = [
-    { code: 'AF', carrier: 'Air France' },
-    { code: 'EK', carrier: 'Emirates' },
-    { code: 'QR', carrier: 'Qatar Airways' },
-    { code: 'EY', carrier: 'Etihad Airways' },
-    { code: 'TK', carrier: 'Turkish Airlines' },
-    { code: 'SV', carrier: 'Saudia' },
-    { code: 'LX', carrier: 'Swiss International' },
-    { code: 'LH', carrier: 'Lufthansa' },
-    { code: 'BA', carrier: 'British Airways' },
-    { code: 'KL', carrier: 'KLM' },
-  ];
-
-  // Generate departure date from startDate
-  const departDate = new Date(
-    parseInt(searchRequest.startDate.substring(0, 4)),
-    parseInt(searchRequest.startDate.substring(4, 6)) - 1,
-    parseInt(searchRequest.startDate.substring(6, 8))
-  );
-
-  // Generate return date if provided
-  const returnDate = searchRequest.endDate ? new Date(
-    parseInt(searchRequest.endDate.substring(0, 4)),
-    parseInt(searchRequest.endDate.substring(4, 6)) - 1,
-    parseInt(searchRequest.endDate.substring(6, 8))
-  ) : null;
-
-  return airlines.map((airline, index) => {
-    // Generate realistic departure times
-    const departHour = 6 + (index * 2) % 18;
-    const departTime = new Date(departDate);
-    departTime.setHours(departHour, (index * 15) % 60, 0, 0);
-
-    // Generate arrival time (departure + duration)
-    const duration = 2.5 + (index * 0.5);
-    const arrivalTime = new Date(departTime);
-    arrivalTime.setHours(arrivalTime.getHours() + Math.floor(duration), 
-                        arrivalTime.getMinutes() + Math.round((duration % 1) * 60));
-
-    // Check if arrival is next day
-    const arrivalNextDay = arrivalTime.getDate() !== departTime.getDate();
-
-    return {
-      airlineCode: airline.code,
-      carrier: airline.carrier,
-      outboundSegments: {
-        flightDuration: duration,
-        legs: [
-          {
-            arr: arrivalTime.toISOString().slice(0, 16).replace('T', 'T'),
-            arrAirport: searchRequest.arrival,
-            arrivalNextDay,
-            dep: departTime.toISOString().slice(0, 16).replace('T', 'T'),
-            depAirport: searchRequest.departure,
-            flightNum: `${airline.code}${1000 + index}`,
-          }
-        ],
-        stops: index % 2 === 0 ? 0 : 1,
-      },
-      inboundSegments: returnDate ? {
-        flightDuration: 2.5 + (index * 0.3),
-        legs: [
-          {
-            arr: returnDate.toISOString().slice(0, 16).replace('T', 'T'),
-            arrAirport: searchRequest.departure,
-            dep: new Date(returnDate.getTime() - (2.5 + index * 0.3) * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', 'T'),
-            depAirport: searchRequest.arrival,
-            flightNum: `${airline.code}${2000 + index}`,
-          }
-        ],
-        stops: index % 3 === 0 ? 0 : 1
-      } : undefined,
-      metaScore: 0.6 + (index * 0.05),
-      totalPrice: 1500 + (index * 200),
-      tripType: searchRequest.endDate ? 'roundTrip' : 'oneWay',
-    };
-  });
-}; 
+ 

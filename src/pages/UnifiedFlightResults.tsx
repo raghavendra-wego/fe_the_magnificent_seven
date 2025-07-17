@@ -38,7 +38,7 @@ import {
   Target,
   Lightbulb
 } from "lucide-react";
-import { generateFlightResults, searchTraditionalFlightsWithSummary, searchAIFlights, convertSearchRequestToTraditional, TraditionalFlightResult } from "@/services/flightSummaryService";
+import { searchTraditionalFlightsWithSummary, searchAIFlights, convertSearchRequestToTraditional, TraditionalFlightResult } from "@/services/flightSummaryService";
 import SmartSummaryBanner from "@/components/SmartSummaryBanner";
 import PersonalizedFilterSuggestions from "@/components/PersonalizedFilterSuggestions";
 import QuickActionsBanner from "@/components/QuickActionsBanner";
@@ -147,6 +147,7 @@ const UnifiedFlightResults = () => {
       departureAirport: outboundFirstLeg.depAirport,
       arrivalAirport: outboundLastLeg.arrAirport,
       aircraft: traditionalFlight.airlineCode + " Aircraft",
+      aircraftCode: traditionalFlight.airlineCode,
       baggage: "20kg", // Default values since not in API
       meal: "Included",
       metaScore: traditionalFlight.metaScore,
@@ -220,140 +221,26 @@ const UnifiedFlightResults = () => {
           } catch (error) {
             console.error("FlightResults: Error fetching AI flights:", error);
             setIsLoading(false);
-            // Fallback to mock data if generation fails
-            const mockFlights = [
-              {
-                airline: "Emirates",
-                aircraft: "Boeing 777",
-                departureTime: "2024-07-16T10:00:00Z",
-                arrivalTime: "2024-07-16T12:30:00Z",
-                departureAirport: "DXB",
-                arrivalAirport: "CAI",
-                duration: "2h 30m",
-                stops: 0,
-                price: 2500,
-                baggage: "20kg",
-                meal: "Included"
-              },
-              {
-                airline: "EgyptAir",
-                aircraft: "Airbus A320",
-                departureTime: "2024-07-16T14:00:00Z",
-                arrivalTime: "2024-07-16T16:45:00Z",
-                departureAirport: "DXB",
-                arrivalAirport: "CAI",
-                duration: "2h 45m",
-                stops: 0,
-                price: 1800,
-                baggage: "15kg",
-                meal: "Not included"
-              }
-            ];
-            setFlightResults(mockFlights);
-            setFilteredResults(sortFlights(mockFlights));
-            setIsLoading(false);
-            const initialConversation = generateInitialConversation(searchRequest, mockFlights);
-            setConversation([initialConversation]);
+            // Show error state instead of mock data
+            setFlightResults([]);
+            setFilteredResults([]);
+            setApiSummarize([]);
           }
         };
         fetchAIFlights();
-      } else {
-        // Simulate API call delay for AI/other types
-        setTimeout(() => {
-          try {
-            const flights = generateFlightResults(searchRequest);
-            console.log("FlightResults: Generated flights:", flights);
-            setFlightResults(flights);
-            setFilteredResults(sortFlights(flights));
-            setIsLoading(false);
-            // Generate initial AI conversation based on search
-            const initialConversation = generateInitialConversation(searchRequest, flights);
-            setConversation([initialConversation]);
-          } catch (error) {
-            console.error("FlightResults: Error generating flights:", error);
-            // Fallback to mock data if generation fails
-            const mockFlights = [
-              {
-                airline: "Emirates",
-                aircraft: "Boeing 777",
-                departureTime: "2024-07-16T10:00:00Z",
-                arrivalTime: "2024-07-16T12:30:00Z",
-                departureAirport: "DXB",
-                arrivalAirport: "CAI",
-                duration: "2h 30m",
-                stops: 0,
-                price: 2500,
-                baggage: "20kg",
-                meal: "Included"
-              },
-              {
-                airline: "EgyptAir",
-                aircraft: "Airbus A320",
-                departureTime: "2024-07-16T14:00:00Z",
-                arrivalTime: "2024-07-16T16:45:00Z",
-                departureAirport: "DXB",
-                arrivalAirport: "CAI",
-                duration: "2h 45m",
-                stops: 0,
-                price: 1800,
-                baggage: "15kg",
-                meal: "Not included"
-              }
-            ];
-            setFlightResults(mockFlights);
-            setFilteredResults(sortFlights(mockFlights));
-            setIsLoading(false);
-            const initialConversation = generateInitialConversation(searchRequest, mockFlights);
-            setConversation([initialConversation]);
-          }
-        }, 1000);
-      }
-    } else {
-      // If no searchRequest, show some default data
-      console.log("FlightResults: No searchRequest, showing default data");
-      setIsLoading(false);
-      // Create a default search request for demo purposes
-      const defaultSearchRequest = {
-        from: { city: "Dubai", country: "United Arab Emirates", code: "DXB" },
-        to: { city: "Cairo", country: "Egypt", code: "CAI" },
-        departDate: "2024-07-16",
-        returnDate: null,
-        tripType: "one-way",
-        passengers: { adults: 1, children: 0, infants: 0 },
-        travelClass: "economy"
-      };
-      const mockFlights = [
-        {
-          airline: "Emirates",
-          aircraft: "Boeing 777",
-          departureTime: "2024-07-16T10:00:00Z",
-          arrivalTime: "2024-07-16T12:30:00Z",
-          departureAirport: "DXB",
-          arrivalAirport: "CAI",
-          duration: "2h 30m",
-          stops: 0,
-          price: 2500,
-          baggage: "20kg",
-          meal: "Included"
-        },
-        {
-          airline: "EgyptAir",
-          aircraft: "Airbus A320",
-          departureTime: "2024-07-16T14:00:00Z",
-          arrivalTime: "2024-07-16T16:45:00Z",
-          departureAirport: "DXB",
-          arrivalAirport: "CAI",
-          duration: "2h 45m",
-          stops: 0,
-          price: 1800,
-          baggage: "15kg",
-          meal: "Not included"
+              } else {
+          // Handle other search types (legacy support)
+          console.log("FlightResults: Unsupported search type:", searchType);
+          setIsLoading(false);
+          setFlightResults([]);
+          setFilteredResults([]);
         }
-      ];
-      setFlightResults(mockFlights);
-      setFilteredResults(sortFlights(mockFlights));
-      const initialConversation = generateInitialConversation(defaultSearchRequest, mockFlights);
-      setConversation([initialConversation]);
+    } else {
+      // If no searchRequest, show empty state
+      console.log("FlightResults: No searchRequest, showing empty state");
+      setIsLoading(false);
+      setFlightResults([]);
+      setFilteredResults([]);
     }
   }, [searchRequest, searchType]);
 
@@ -942,7 +829,7 @@ const UnifiedFlightResults = () => {
                           {/* Airline Info */}
                           <div className="text-center justify-center">
                             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                              <Plane className="w-6 h-6 text-blue-600" />
+                              <img src={`https://assets.wego.com/image/upload/h_240,c_fill,f_auto,fl_lossy,q_auto:best,g_auto/v20250717/flights/airlines_square/${flight.aircraftCode}.png`} alt={flight.airline} className="w-6 h-6" />
                             </div>
                             <div className="text-sm font-medium text-gray-900">{flight.airline}</div>
                             <div className="text-xs text-gray-500">{flight.aircraft}</div>
@@ -981,9 +868,7 @@ const UnifiedFlightResults = () => {
                             <div className="text-2xl font-bold text-green-600">
                               ${flight.price.toLocaleString()}
                             </div>
-                            <div className="text-sm text-gray-500 mb-3">
-                              {flight.baggage} • {flight.meal}
-                            </div>
+                           
                             <Button className="bg-green-600 hover:bg-green-700">
                               Select
                             </Button>
@@ -1018,7 +903,7 @@ const UnifiedFlightResults = () => {
                               {/* Airline Info for Return (reuse) */}
                               <div className="text-center justify-center">
                                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
-                                  <Plane className="w-6 h-6 text-green-600" />
+                                <img src={`https://assets.wego.com/image/upload/h_240,c_fill,f_auto,fl_lossy,q_auto:best,g_auto/v20250717/flights/airlines_square/${flight.aircraftCode}.png`} alt={flight.airline} className="w-6 h-6" />
                                 </div>
                                 <div className="text-sm font-medium text-gray-900">{flight.airline}</div>
                                 <div className="text-xs text-gray-500">{flight.aircraft}</div>
@@ -1055,9 +940,7 @@ const UnifiedFlightResults = () => {
                               <div className="text-2xl font-bold text-green-600">
                                 ${flight.price.toLocaleString()}
                               </div>
-                              <div className="text-sm text-gray-500 mb-3">
-                                {flight.baggage} • {flight.meal}
-                              </div>
+                              
                               <Button className="bg-green-600 hover:bg-green-700">
                                 Select
                               </Button>
@@ -1118,7 +1001,7 @@ const UnifiedFlightResults = () => {
               <Card className="text-center py-12">
                 <CardContent>
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Plane className="w-8 h-8 text-gray-400" />
+                  <img src={`https://assets.wego.com/image/upload/h_240,c_fill,f_auto,fl_lossy,q_auto:best,g_auto/v20250717/flights/airlines_square/${flight.aircraftCode}.png`} alt={flight.airline} className="w-6 h-6" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No flights match your filters</h3>
                   <p className="text-gray-500 mb-4">Try adjusting your search criteria or removing some filters</p>
